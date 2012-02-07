@@ -23,30 +23,25 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-__version__ = '1.9'
+__version__ = '1.10'
 
-import os
-import sys
-import pygame
-import importlib
-import random
+import importlib, random, os, sys, pygame
+
 from pms import Playlist
+from common import get_ext
+
 from pgpu.math_utils import limit
 from pgpu.compatibility import *
 
 # an advanced feature that allows loading a start time for musics
 # as well as a certain decision between ogg music and ogg sounds
 loaders = {}
-try:
-    # a python package for working with music tags
-    import mutagen.oggvorbis
-    import mutagen.mp3
-    loaders['ogg'] = mutagen.oggvorbis.Open
-    loaders['mp3'] = mutagen.mp3.MP3
-except ImportError:
-    # dummy loader
-    loaders['ogg'] = loaders['mp3'] = lambda f: {}
-
+# Use the pyslim interface to any available loaders
+import pyslim
+dummy = lambda filename: {}  # The default; presents all the interface we need
+for ext in ['ogg', 'mp3']:
+    loaders[ext] = pyslim.ldict.get(ext, dummy)
+del dummy
 
 ls = os.listdir
 join = os.path.join
@@ -62,10 +57,6 @@ T_PLAYLIST = 4
 T_OTHER = 5
 
 METAEVENT = 31
-
-
-def get_ext(fl):
-    return fl.split('.')[-1].lower()
 
 def guess_type(fl):
     ext = get_ext(fl)
