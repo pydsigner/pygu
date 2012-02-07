@@ -23,7 +23,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-__version__ = '1.10'
+__version__ = '1.11'
 
 import importlib, random, os, sys, pygame
 
@@ -139,7 +139,7 @@ class Resources(object):
     on '~/.inevitable/data', a possible mainfile would be 
     '~/.inevitable/data/trigger/__init__.py'.
     '''
-    def __init__(self, channels = 16, dynamic = False):
+    def __init__(self, channels=16, dynamic=False):
         '''
         The number of sound channels can be set using @channels, and can be 
         allowed to grow on demand by making @dynamic true.
@@ -201,7 +201,7 @@ class Resources(object):
             #print obj.title
             self.code[obj.title.lower()] = obj
         del g_o
-    def load_objects(self, dirs = []):
+    def load_objects(self, dirs=[]):
         '''
         Call this to load resources from each dir in @dirs.
         '''
@@ -234,7 +234,7 @@ class Resources(object):
         #print self.playlists
         return random.choice(self.playlists[self.cur_playlist])
     
-    def set_music(self, plylst, force = False):
+    def set_music(self, plylst, force=False):
         '''
         Use to self the playlist to @plylst. If @force is False, the 
         playlist will not be set if it is @plylst already.
@@ -258,7 +258,7 @@ class Resources(object):
         # Can take a start time from the music's metadata!
         pygame.mixer.music.play(0, float(loaders[ext](f).get('gstart', [0])[0]))
     
-    def set_m_vol(self, vol = None, relative = False):
+    def set_m_vol(self, vol=None, relative=False):
         '''
         Set the music volume. If @vol != None, It will be changed to it (or by 
         it, if @relative is True.)
@@ -268,7 +268,7 @@ class Resources(object):
                 vol += self.m_vol
             self.m_vol = min(max(vol, 0), 1)
         pygame.mixer.music.set_volume(self.m_vol)
-    def set_s_vol(self, vol = None, relative = False):
+    def set_s_vol(self, vol=None, relative=False):
         '''
         Set the volume of all sounds. If @vol != None, It will be changed to 
         it (or by it, if @relative is True.)
@@ -310,19 +310,19 @@ class GameState(object):
     pass around, such as the Resources() class in this module.
     '''
     
-    def __init__(self, groups = {}):
+    def __init__(self, groups={}):
         self.groups = {}
     
-    def add_groups(self, groups = {}):
+    def add_groups(self, groups={}):
         self.groups.update(groups)
     def remove_group(self, group):
         del self.groups[group]
-    def remove_groups(self, groups = []):
+    def remove_groups(self, groups=[]):
         for group in groups:
             self.remove_group(group)
     def get_group(self, group):
         return self.groups[group]
-    def get_groups(self, groups = []):
+    def get_groups(self, groups=[]):
         res = {}
         for group in groups:
             res[group] = self.get_group(group)
@@ -375,7 +375,7 @@ class EventManager(object):
         d.update(kw)
         pygame.event.put(pygame.event.Event(METAEVENT, d))
     
-    def loop(self, events = []):
+    def loop(self, events=[]):
         '''
         Run the loop.
         '''
@@ -438,16 +438,19 @@ class StateManager(GameState):
     A GameState with a state model. Each state has an EventManagerPlus for 
     separation of events.
     '''
-    def __init__(self, states, groups = {}):
+    def __init__(self, states, groups={}):
         self.states = {}
         self.add_states(*states)
         self.state = states[0]
         GameState.__init__(self, groups)
     
+    def __getitem__(self, key):
+        return self.states[key]
+    
     def add_states(self, *states):
         for state in states:
             self.states[state] = EventManagerPlus(self)
-    def get_state(self, state = None):
+    def get_state(self, state=None):
         '''
         If @state is None, return the title of the current state. Otherwise, 
         return the EventManager for @state.
@@ -462,7 +465,7 @@ class StateManager(GameState):
         self._state = state
     state = property(get_state, set_state)
     
-    def loop(self, events = []):
+    def loop(self, events=[]):
         '''
         Run the event processing loop with @events.
         '''
