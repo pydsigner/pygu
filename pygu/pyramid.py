@@ -2,7 +2,7 @@
 Copyright (c) 2011-2012 Daniel Foerster/Dsigner Software <pydsigner@gmail.com>
 
  PYREMD (PYgame REsource Management for Developers), or Pyramid, is a resource 
-management solution for pygame. It is designed to be a buffer and interface 
+management solution for Pygame. It is designed to be a buffer and interface 
 between the game state and your objects that is simpler, easier, and more 
 powerful than passing myriads of Pygame groups around (not to mention being 
 more Pythonistic). It also attempts to solve the problem of allowing classes to 
@@ -23,7 +23,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-__version__ = '1.8'
+__version__ = '1.9'
 
 import os
 import sys
@@ -60,6 +60,9 @@ T_MUSIC = 2
 T_CODE = 3
 T_PLAYLIST = 4
 T_OTHER = 5
+
+METAEVENT = 31
+
 
 def get_ext(fl):
     return fl.split('.')[-1].lower()
@@ -99,7 +102,9 @@ class Sound(pygame.mixer.Sound):
         pygame.mixer.Sound.set_volume(self, self.resources.s_vol)
 
 class Resources(object):
-    '''The Resources() object handles the loading and retrieving of objects. 
+    '''
+    The Resources() object handles the loading and retrieving of objects. 
+    
     It is simple to load sounds and images, but advanced music management 
     and code loading are also possible. For sounds and images, the name of 
     the directories is important for retrieving them. The dir in which they 
@@ -141,10 +146,13 @@ class Resources(object):
     "super_addon_pack", you cannot name your package "reloading". It must be 
     alphabetically after "super_addon_pack". Supposing the loader is running 
     on '~/.inevitable/data', a possible mainfile would be 
-    '~/.inevitable/data/trigger/__init__.py'.'''
+    '~/.inevitable/data/trigger/__init__.py'.
+    '''
     def __init__(self, channels = 16, dynamic = False):
-        '''The number of sound channels can be set using @channels, and can be 
-        allowed to grow on demand by making @dynamic true.'''
+        '''
+        The number of sound channels can be set using @channels, and can be 
+        allowed to grow on demand by making @dynamic true.
+        '''
         self.reset()
         self.channels = channels
         self.dynamic = bool(dynamic)
@@ -161,30 +169,40 @@ class Resources(object):
         self.s_vol = .13
     
     def load_image(self, loc, title, group):
-        '''Used internally when loading images. You should probably use 
-        load_objects().'''
+        '''
+        Used internally when loading images. You should probably use 
+        load_objects().
+        '''
         self.images.setdefault(group, {})
         self.images[group][title] = pygame.image.load(loc).convert_alpha()
     def load_music(self, loc, title, group):
-        '''Used internally when loading music. You should probably use 
-        load_objects().'''
+        '''
+        Used internally when loading music. You should probably use 
+        load_objects().
+        '''
         self.music.setdefault(group, {})
         self.music[group][title] = loc
     def load_playlist(self, loc, title):
-        '''Used internally when loading playlists. You should probably use 
-        load_objects().'''
+        '''
+        Used internally when loading playlists. You should probably use 
+        load_objects().
+        '''
         #print 'loading...'
         lines = [l.strip() for l in open(loc).readlines()]
         self.playlists.setdefault(title, [])
         self.playlists[title].append(Playlist(lines, True))
     def load_sound(self, loc, title, group):
-        '''Used internally when loading sounds. You should probably use 
-        load_objects().'''
+        '''
+        Used internally when loading sounds. You should probably use 
+        load_objects().
+        '''
         self.sounds.setdefault(group, {})
         self.sounds[group][title] = Sound(loc, self)
     def load_code(self, path, package):
-        '''Used internally when loading code. You should probably use 
-        load_objects().'''
+        '''
+        Used internally when loading code. You should probably use 
+        load_objects().
+        '''
         sys.path = [path] + sys.path
         g_o = importlib.import_module(package).get_objects
         sys.path.pop(0)
@@ -193,7 +211,9 @@ class Resources(object):
             self.code[obj.title.lower()] = obj
         del g_o
     def load_objects(self, dirs = []):
-        'Call this to load resources from each dir in @dirs.'
+        '''
+        Call this to load resources from each dir in @dirs.
+        '''
         for d in dirs:
             contents = ls(d)
             for t in contents:
@@ -224,14 +244,18 @@ class Resources(object):
         return random.choice(self.playlists[self.cur_playlist])
     
     def set_music(self, plylst, force = False):
-        '''Use to self the playlist to @plylst. If @force is False, the 
-        playlist will not be set if it is @plylst already.'''
+        '''
+        Use to self the playlist to @plylst. If @force is False, the 
+        playlist will not be set if it is @plylst already.
+        '''
         plylst = plylst.lower()
         if plylst != self.cur_playlist or force:
             self.cur_playlist = plylst
             self.play_song(self.get_playlist().begin())
     def next_song(self):
-        'Go to the next song in the playlist.'
+        '''
+        Go to the next song in the playlist.
+        '''
         self.play_song(self.get_playlist().next())
     def play_song(self, stup):
         #print stup
@@ -244,16 +268,20 @@ class Resources(object):
         pygame.mixer.music.play(0, float(loaders[ext](f).get('gstart', [0])[0]))
     
     def set_m_vol(self, vol = None, relative = False):
-        '''Set the music volume. If @vol != None, It will be changed to it (or 
-        by it, if @relative is True.)'''
+        '''
+        Set the music volume. If @vol != None, It will be changed to it (or by 
+        it, if @relative is True.)
+        '''
         if vol != None:
             if relative:
                 vol += self.m_vol
             self.m_vol = min(max(vol, 0), 1)
         pygame.mixer.music.set_volume(self.m_vol)
     def set_s_vol(self, vol = None, relative = False):
-        '''Set the volume of all sounds. If @vol != None, It will be changed to 
-        it (or by it, if @relative is True.)'''
+        '''
+        Set the volume of all sounds. If @vol != None, It will be changed to 
+        it (or by it, if @relative is True.)
+        '''
         if vol != None:
             if relative:
                 vol += self.s_vol
@@ -263,15 +291,21 @@ class Resources(object):
                 snd.set_volume()
     
     def get_sound(self, title, group):
-        'Retrieve sound @title from group @group.'
+        '''
+        Retrieve sound @title from group @group.
+        '''
         return self.sounds[group.lower()][title.lower()]
     def get_image(self, title, group):
-        'Retrieve image @title from group @group.'
+        '''
+        Retrieve image @title from group @group.
+        '''
         return self.images[group.lower()][title.lower()]
     def get_code(self, title):
         return self.code[title.lower()]
     def get_channel(self):
-        'Used internally when playing sounds.'
+        '''
+        Used internally when playing sounds.
+        '''
         c = pygame.mixer.find_channel(not self.dynamic)
         while c is None:
             self.channels += 1
@@ -280,8 +314,10 @@ class Resources(object):
         return c
 
 class GameState(object):
-    '''This class is designed to be a holder for any sort of data you wish to 
-    pass around, such as the Resources() class in this module.'''
+    '''
+    This class is designed to be a holder for any sort of data you wish to 
+    pass around, such as the Resources() class in this module.
+    '''
     
     def __init__(self, groups = {}):
         self.groups = {}
@@ -304,38 +340,68 @@ class GameState(object):
         self.groups.clear()
 
 class EventManager(object):
-    '''An event manager for complex applications with a neccessity for run-time 
-    customizable event handling.'''
+    '''
+    An event manager for complex applications with a necessity for run-time 
+    customizable event handling.
+    '''
     
     class message(Exception):
         pass
+    
     def __init__(self, gstate):
-        '@gstate should be whatever you want sent to the registered functions.'
+        '''
+        @gstate should be whatever you want sent to the registered functions.
+        '''
         self.gstate = gstate
         self.event_funcs = {}
     
     def bind(self, func, etype):
-        '''Register @func for execution when events with .type of etype are 
-        handled. @func will be called with self, self.gstate, and the event as 
-        arguments.'''
+        '''
+        Register @func for execution when events with `.type` of @etype 
+        or meta-events with `.utype` of @etype are handled. @func will be 
+        called with self, self.gstate, and the event as arguments.
+        '''
         self.event_funcs.setdefault(etype, [])
-        self.event_funcs[etype].append(func)
+        # Don't add multiple times!
+        if func not in self.event_funcs[etype]:
+            self.event_funcs[etype].append(func)
+    
     def unbind(self, func, etype):
-        '''Remove @func from the execution list for events with .type of etype.
-        If @func is not in said list, a ValueError will be raised.'''
+        '''
+        Remove @func from the execution list for events with `.type` of @etype 
+        or meta-events with `.utype` of @etype. If @func is not in said list, 
+        a ValueError will be raised.
+        '''
         i= self.event_funcs[etype].index(func)
         del self.event_funcs[etype][i]
+    
+    def event(self, utype, **kw):
+        '''
+        Make a meta-event with a utype of @type. **@kw works the same as for 
+        pygame.event.Event().
+        '''
+        d = {'utype': utype}
+        d.update(kw)
+        pygame.event.put(pygame.event.Event(METAEVENT, d))
+    
     def loop(self, events = []):
-        'Run the loop.'
+        '''
+        Run the loop.
+        '''
         try:
-            for e in pygame.event.get():
-                for func in self.event_funcsget(e, []):
+            for e in events:
+                t = e.type
+                if t == METAEVENT:
+                    t = e.utype
+                for func in self.event_funcs.get(t, []):
                     func(self, self.gstate, e)
         except self.message as e:
             return e.message
 
 class HotspotManager(object):
-    '''An addon to EventManager that allows dynamic click-area binding.'''
+    '''
+    An addon to EventManager that allows dynamic click-area binding.
+    '''
     def __init__(self, emanager):
         dynamic = []
         static = []
@@ -345,12 +411,16 @@ class HotspotManager(object):
         self.emanager.unbind(self.execute, MOUSEBUTTONDOWN)
     
     def add_static(self, cfunc, rect):
-        '''Adds @cfunc statically; that is, it will be called whenever the 
-        mouse is clicked inside @rect.'''
+        '''
+        Adds @cfunc statically; that is, it will be called whenever the 
+        mouse is clicked inside @rect.
+        '''
         self.static.append((cfunc, rect))
     def add_dynamic(self, cfunc, rfunc):
-        '''Adds @cfunc dynamically; that is, it will be called whenever the 
-        mouse is clicked inside any of the Rect()s provided by @rfunc.'''
+        '''
+        Adds @cfunc dynamically; that is, it will be called whenever the 
+        mouse is clicked inside any of the Rect()s provided by @rfunc.
+        '''
         self.dynamic.append((cfunc, rfunc))
     
     def execute(self, gstate, event):
@@ -365,14 +435,18 @@ class HotspotManager(object):
                     break
 
 class EventManagerPlus(EventManager):
-    '''A version of EventManager with a builtin HotspotManager.'''
+    '''
+    A version of EventManager with a builtin HotspotManager.
+    '''
     def __init__(self, gstate):
         EventManager.__init__(self, gstate)
         self.hotspot = HotspotManager(self)
 
 class StateManager(GameState):
-    '''A GameState with a state model. Each state has an EventManagerPlus for 
-    separation of events.'''
+    '''
+    A GameState with a state model. Each state has an EventManagerPlus for 
+    separation of events.
+    '''
     def __init__(self, states, groups = {}):
         self.states = {}
         self.add_states(*states)
@@ -383,16 +457,23 @@ class StateManager(GameState):
         for state in states:
             self.states[state] = EventManagerPlus(self)
     def get_state(self, state = None):
-        '''If @state is None, return the title of the current state. Otherwise, 
-        return the EventManager for @state.'''
+        '''
+        If @state is None, return the title of the current state. Otherwise, 
+        return the EventManager for @state.
+        '''
         return self._state if state is None else self.states[state]
     def get_states(self):
         return self.states
     def set_state(self, state):
-        'Set the state to @state.'
+        '''
+        Set the state to @state.
+        '''
         self._state = state
     state = property(get_state, set_state)
     
     def loop(self, events = []):
+        '''
+        Run the event processing loop with @events.
+        '''
         self.get_state(self.state).loop(events)
 
