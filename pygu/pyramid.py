@@ -396,10 +396,10 @@ class HotspotManager(object):
     def __init__(self, emanager):
         dynamic = []
         static = []
-        emanager.bind(self.execute, MOUSEBUTTONDOWN)
+        emanager.bind(self.execute, pygame.MOUSEBUTTONDOWN)
         self.emanager = emanager
     def __del__(self):
-        self.emanager.unbind(self.execute, MOUSEBUTTONDOWN)
+        self.emanager.unbind(self.execute, pygame.MOUSEBUTTONDOWN)
     
     def add_static(self, cfunc, rect):
         '''
