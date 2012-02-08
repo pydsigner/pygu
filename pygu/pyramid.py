@@ -195,7 +195,7 @@ class Resources(object):
         '''
         sys.path = [path] + sys.path
         g_o = importlib.import_module(package).get_objects
-        del sys.path[0], sys.modules[package]
+        del sys.path[0]
         for obj in g_o(callwith):
             self.code[obj.title.lower()] = obj
         
