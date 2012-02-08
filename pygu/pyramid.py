@@ -409,7 +409,7 @@ class HotspotManager(object):
         '''
         self.dynamic.append((cfunc, rfunc))
     
-    def execute(self, gstate, event):
+    def execute(self, eman, gstate, event):
         loc = event.pos
         for t in self.static:
             if t[1].collidepoint(loc):
