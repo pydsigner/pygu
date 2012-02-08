@@ -23,7 +23,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-__version__ = '1.11'
+__version__ = '1.12'
 
 import importlib, random, os, sys, pygame
 
@@ -127,9 +127,9 @@ class Resources(object):
     of folders containing code must follow Python naming requirements. Once 
     your file has been identified, the loader will import and run a function 
     in your file that must be called 'get_objects()', must return a list of 
-    objects to be loaded, and accept one argument, which will be the 
-    Resources() object doing the loading. Each of the objects returned must 
-    also have a 'title' attribute, which is how it can be retrieved from the 
+    objects to be loaded, and accept one argument, which will be the @callwith 
+    argument passed to load_objects(). Each of the objects returned must also 
+    have a 'title' attribute, which is how it can be retrieved from the 
     Resources() object.The name of the package, though it has no effect upon 
     the names of the objects within, determines order of import. This is 
     essential if your package has dependencies. For example, let us suppose 
@@ -178,7 +178,6 @@ class Resources(object):
         Used internally when loading playlists. You should probably use 
         load_objects().
         '''
-        #print 'loading...'
         lines = [l.strip() for l in open(loc).readlines()]
         self.playlists.setdefault(title, [])
         self.playlists[title].append(Playlist(lines, True))
@@ -189,21 +188,21 @@ class Resources(object):
         '''
         self.sounds.setdefault(group, {})
         self.sounds[group][title] = Sound(loc, self)
-    def load_code(self, path, package):
+    def load_code(self, path, package, callwith):
         '''
         Used internally when loading code. You should probably use 
         load_objects().
         '''
         sys.path = [path] + sys.path
         g_o = importlib.import_module(package).get_objects
-        sys.path.pop(0)
-        for obj in g_o(self):
-            #print obj.title
+        del sys.path[0], sys.modules[package]
+        for obj in g_o(callwith):
             self.code[obj.title.lower()] = obj
-        del g_o
-    def load_objects(self, dirs=[]):
+        
+    def load_objects(self, dirs=[], callwith={}):
         '''
-        Call this to load resources from each dir in @dirs.
+        Call this to load resources from each dir in @dirs. Code resources will 
+        receive @callwith as an argument.
         '''
         for d in dirs:
             contents = ls(d)
@@ -218,7 +217,6 @@ class Resources(object):
                         continue
                     fl_n = fl.lower().rsplit('.', 1)[0]
                     ty = guess_type(full)
-                    #if ty == T_PLAYLIST: print ty
                     if ty == T_IMAGE:
                         self.load_image(full, fl_n, t)
                     elif ty == T_SOUND:
@@ -226,18 +224,17 @@ class Resources(object):
                     elif ty == T_MUSIC:
                         self.load_music(full, fl_n, t)
                     elif ty == T_CODE and fl_n == '__init__':
-                        self.load_code(d, t)
+                        self.load_code(d, t, callwith)
                     elif ty == T_PLAYLIST:
                         self.load_playlist(full, fl_n)
     
     def get_playlist(self):
-        #print self.playlists
         return random.choice(self.playlists[self.cur_playlist])
     
     def set_music(self, plylst, force=False):
         '''
-        Use to self the playlist to @plylst. If @force is False, the 
-        playlist will not be set if it is @plylst already.
+        Use to set the playlist to @plylst. If @force is False, the playlist 
+        will not be set if it is @plylst already.
         '''
         plylst = plylst.lower()
         if plylst != self.cur_playlist or force:
@@ -249,9 +246,7 @@ class Resources(object):
         '''
         self.play_song(self.get_playlist().next())
     def play_song(self, stup):
-        #print stup
-        group, title = stup#[0]
-        #print self.music
+        group, title = stup
         f = self.music[group][title]
         pygame.mixer.music.load(f)
         ext = get_ext(f)
