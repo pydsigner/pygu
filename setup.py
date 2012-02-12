@@ -28,6 +28,7 @@ common          --  shared information, classes, and functions
 pyramid         --  an advanced resource loader and several gamestate managers
 pms             --  a loader for PMS playlists
 pyslim          --  an audio metadata loader frontend for multiple loaders
+pygw            --  a  GUI toolkit for pyramid
 ''',
         'author': "Daniel Foerster/pydsigner",
         'author_email': "pydsigner@gmail.com",

@@ -1,5 +1,5 @@
 '''
-Shared information, classes and functions for Pygu.
+Shared information, classes and functions for PyGU.
 '''
 
 def get_ext(fl):

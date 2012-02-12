@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __version__ = '1.12'
 
 import importlib, random, os, sys, pygame
+pygame.init()
 
 from pms import Playlist
 from common import get_ext
