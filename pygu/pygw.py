@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __version__ = '1.0'
 
 import pygame
+from pygame.locals import *
 pygame.init()
 
 class Widget(pygame.sprite.Sprite):
@@ -57,10 +58,13 @@ class ClickableWidget(Label):
         See documentation for Label();
         @eman *is* used, so don't supply a dummy!
         '''
-        Widget.__init__(self, groups, pos, content, eman)
-        eman.hotspot.add_dynamic(self.callback, self.get_rect)
+        Label.__init__(self, groups, pos, content, eman)
+        eman.hotspot.add_dynamic((self.callback, self.set_hover), self.get_rect)
     
-    def callback(self, gstate, event):
+    def callback(self, eman, gstate, event):
+        pass
+    
+    def set_hover(self, eman, gstate, event, is_hovered):
         pass
     
     def get_rect(self):
@@ -73,10 +77,26 @@ class Button(ClickableWidget):
     def __init__(self, groups, pos, content, callback, eman):
         '''
         See documentation for ClickableWidget();
+        @content should be a (normal_content, active_content) tuple;
         @callback: The function to be called when the Button() is clicked.
         '''
-        self.callback = callback
-        ClickableWidget.__init__(self, groups, pos, content, eman)
+        self.cb = callback
+        self.hover = False
+        self.content = content
+        ClickableWidget.__init__(self, groups, pos, content[0], eman)
+    
+    def callback(self, eman, gstate, event):
+        if event.type == MOUSEBUTTONDOWN and event.button == 1:
+            self.cb(eman, gstate, event)
+    
+    def set_hover(self, eman, gstate, event, is_hovered):
+        # Save time by not assigning unneccessarily.
+        if is_hovered and not self.hover:
+            self.hover = True
+            self.image = content[1]
+        elif not is_hovered and self.hover:
+            self.hover = False
+            self.image = content[0]
 
 class ScrollBar(ClickableWidget):
     '''

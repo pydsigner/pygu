@@ -387,25 +387,43 @@ class EventManager(object):
 
 class HotspotManager(object):
     '''
-    An addon to EventManager that allows dynamic click-area binding.
+    An addon to EventManager that allows dynamic mouse-action-in-area binding.
     '''
     def __init__(self, emanager):
         dynamic = []
         static = []
         emanager.bind(self.execute, pygame.MOUSEBUTTONDOWN)
+        emanager.bind(self.execute, pygame.MOUSEBUTTONUP)
+        emanager.bind(self.exec_hover, pygame.MOUSEMOTION)
         self.emanager = emanager
     def __del__(self):
         self.emanager.unbind(self.execute, pygame.MOUSEBUTTONDOWN)
+        self.emanager.unbind(self.execute, pygame.MOUSEBUTTONUP)
+        self.emanager.unbind(self.exec_hover, pygame.MOUSEMOTION)
     
-    def add_static(self, cfunc, rect):
+    def add_static(self, cfuncs, rect):
         '''
-        Adds @cfunc statically; that is, it will be called whenever the 
+        @cfuncs is a (button_action_func, hover_func) tuple. button_action_func 
+        should have a 
+        func(EventManager, GameState, Event) 
+        signature, whereas hover_func should have a 
+        func(EventManager, GameState, Event, bool: "Is mouse hovering?") 
+        signature.
+        
+        Adds @cfuncs statically; that is, it will be called whenever the 
         mouse is clicked inside @rect.
         '''
         self.static.append((cfunc, rect))
-    def add_dynamic(self, cfunc, rfunc):
+    def add_dynamic(self, cfuncs, rfunc):
         '''
-        Adds @cfunc dynamically; that is, it will be called whenever the 
+        @cfuncs is a (button_action_func, hover_func) tuple. button_action_func 
+        should have a 
+        func(EventManager, GameState, Event) 
+        signature, whereas hover_func should have a 
+        func(EventManager, GameState, Event, bool: "Is mouse hovering?") 
+        signature.
+        
+        Adds @cfuncs dynamically; that is, it will be called whenever the 
         mouse is clicked inside any of the Rect()s provided by @rfunc.
         '''
         self.dynamic.append((cfunc, rfunc))
@@ -413,13 +431,33 @@ class HotspotManager(object):
     def execute(self, eman, gstate, event):
         loc = event.pos
         for t in self.static:
+            if t[0][0] is None:
+                continue
             if t[1].collidepoint(loc):
-                t[0](gstate, event)
+                t[0][0](eman, gstate, event)
         for t in self.dynamic:
+            if t[0][0] is None:
+                continue
             for r in t[1](gstate):
                 if r.collidepoint(loc):
-                    t[0](gstate, event)
+                    t[0][0](eman, gstate, event)
                     break
+    
+    def exec_hover(self, eman, gstate, event):
+        loc = event.pos
+        for t in self.static:
+            if t[0][1] is None:
+                continue
+            t[0][1](eman, gstate, event, t[1].collidepoint(loc))
+        for t in self.dynamic:
+            if t[0][1] is None:
+                continue
+            for r in t[1](gstate):
+                y = False
+                if r.collidepoint(loc):
+                    y = True
+                    break
+            t[0][1](eman, gstate, event, y)
 
 class EventManagerPlus(EventManager):
     '''
