@@ -19,7 +19,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-__version__ = '1.0'
+__version__ = '1.1'
 
 import pygame
 from pygame.locals import *
@@ -67,8 +67,8 @@ class ClickableWidget(Label):
     def set_hover(self, eman, gstate, event, is_hovered):
         pass
     
-    def get_rect(self):
-        return self.rect
+    def get_rect(self, gstate):
+        return [self.rect]
 
 class Button(ClickableWidget):
     '''
@@ -93,10 +93,10 @@ class Button(ClickableWidget):
         # Save time by not assigning unneccessarily.
         if is_hovered and not self.hover:
             self.hover = True
-            self.image = content[1]
+            self.image = self.content[1]
         elif not is_hovered and self.hover:
             self.hover = False
-            self.image = content[0]
+            self.image = self.content[0]
 
 class ScrollBar(ClickableWidget):
     '''

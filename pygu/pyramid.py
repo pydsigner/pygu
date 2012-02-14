@@ -23,7 +23,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-__version__ = '1.12'
+__version__ = '1.13'
 
 import importlib, random, os, sys, pygame
 pygame.init()
@@ -335,6 +335,18 @@ class EventManager(object):
     class message(Exception):
         pass
     
+    class metaevent(object):
+        def __init__(self, event):
+            self.__dict__['e'] = event
+        def __getattr__(self, attr):
+            if attr == 'type':
+                attr = 'utype'
+            return getattr(self.__dict__['e'], attr)
+        def __setattr__(self, attr, value):
+            if attr == 'type':
+                attr = 'utype'
+            setattr(self.__dict__['e'], attr, value)
+    
     def __init__(self, gstate):
         '''
         @gstate should be whatever you want sent to the registered functions.
@@ -369,7 +381,7 @@ class EventManager(object):
         '''
         d = {'utype': utype}
         d.update(kw)
-        pygame.event.put(pygame.event.Event(METAEVENT, d))
+        pygame.event.post(pygame.event.Event(METAEVENT, d))
     
     def loop(self, events=[]):
         '''
@@ -377,10 +389,9 @@ class EventManager(object):
         '''
         try:
             for e in events:
-                t = e.type
-                if t == METAEVENT:
-                    t = e.utype
-                for func in self.event_funcs.get(t, []):
+                if e.type == METAEVENT:
+                    e = self.metaevent(e)
+                for func in self.event_funcs.get(e.type, []):
                     func(self, self.gstate, e)
         except self.message as e:
             return e.message
@@ -390,8 +401,8 @@ class HotspotManager(object):
     An addon to EventManager that allows dynamic mouse-action-in-area binding.
     '''
     def __init__(self, emanager):
-        dynamic = []
-        static = []
+        self.dynamic = []
+        self.static = []
         emanager.bind(self.execute, pygame.MOUSEBUTTONDOWN)
         emanager.bind(self.execute, pygame.MOUSEBUTTONUP)
         emanager.bind(self.exec_hover, pygame.MOUSEMOTION)
@@ -413,7 +424,7 @@ class HotspotManager(object):
         Adds @cfuncs statically; that is, it will be called whenever the 
         mouse is clicked inside @rect.
         '''
-        self.static.append((cfunc, rect))
+        self.static.append((cfuncs, rect))
     def add_dynamic(self, cfuncs, rfunc):
         '''
         @cfuncs is a (button_action_func, hover_func) tuple. button_action_func 
@@ -426,7 +437,7 @@ class HotspotManager(object):
         Adds @cfuncs dynamically; that is, it will be called whenever the 
         mouse is clicked inside any of the Rect()s provided by @rfunc.
         '''
-        self.dynamic.append((cfunc, rfunc))
+        self.dynamic.append((cfuncs, rfunc))
     
     def execute(self, eman, gstate, event):
         loc = event.pos
