@@ -33,7 +33,7 @@ pygw            --  a  GUI toolkit for pyramid
         'author': "Daniel Foerster/pydsigner",
         'author_email': "pydsigner@gmail.com",
         'packages': ['pygu'],
-        'license': 'GPLv3',
+        'license': 'LGPLv3',
         'url': "http://github.com/pydsigner/pygu",
         'classifiers': [
             'Development Status :: 4 - Beta',

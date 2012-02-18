@@ -1,0 +1,35 @@
+Pydsigner's Pygame Utilities
+================================================================================
+
+A collection of handy modules for Pygame created by Daniel Foerster (a.k.a. 
+pydsigner)
+
+pydsigner@gmail.com
+http://github.com/pydsigner/pygu
+
+
+PYGU is distributed under the LGPLv3 (or greater), see COPYING for details.
+
+--------------------------------------------------------------------------------
+
+If you would like to contribute to PYGU in any way, whether through bug 
+reports, bug fixes, better code, or new code altogether, please follow these 
+instructions:
+
+
+1) If you are sending a large amount of code, please make a Git diff and email 
+   it to me. Otherwise, go to the website given above and follow the standard 
+   procedures. There is a special tab for bugs.
+
+2) If you sent an email, just watch your inbox. If I want more information, I 
+   will tell you. If I thought it was worthy, I will thank you and get you up 
+   in the AUTHORS file, etc. If I didn't think it was worthwhile or that it 
+   wouldn't fit in, I will thank you anyways. If you used Github, do the same 
+   things, but watch the website instead.
+   
+--------------------------------------------------------------------------------
+
+If you use this library to do something useful, be sure to let me know! 
+Sometimes a short "Good work!" message is enough to make a programmer feel 
+rewarded. And of course, "Wrote a library that was used in X many other 
+people's projects" always looks good on a resume!
