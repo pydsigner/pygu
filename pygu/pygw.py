@@ -327,10 +327,13 @@ class Scrollable(Label):
     '''
     A wrapper Widget() to allow scrolling. Supports ScrollBar()s.
     '''
-    def __init__(self, widget, pos, size):
+    def __init__(self, widget, groups, bg, pos, eman):
+        Label.__init__(self, groups, pos, bg, eman)
         self.widget = widget
-        self.rect = Rect((0, 0), size).move(pos)
         self.image = widget.image.copy()
+        self.widget.rect = self.rect
+        
+        self.bg = bg
         self.offset = Vector()
     
     def scroll_x(self, pixels, relative=True):
@@ -352,9 +355,11 @@ class Scrollable(Label):
             self.offset.y = int(pixels)
     
     def update(self):
+        self.image = self.bg.copy()
+        
         self.offset.x = limit(self.offset.x, 
-                0, self.widget.rect.w - self.rect.w)
+                -self.widget.rect.w + self.rect.w, 0)
         self.offset.y = limit(self.offset.y, 
-                0, self.widget.rect.h - self.rect.h)
+                -self.rect.h + self.rect.h, 0)
         
         self.image.blit(self.widget.image, self.offset)
