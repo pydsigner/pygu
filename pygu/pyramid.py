@@ -47,7 +47,7 @@ del dummy
 ls = os.listdir
 join = os.path.join
 
-IMAGE_TYPES = ('jpg jpeg jpe png gif bmp pcx pcc tga tif tiff lbm pbm pgm' + 
+IMAGE_TYPES = ('jpg jpeg jpe png gif bmp pcx pcc tga tif tiff lbm pbm pgm ' + 
                 'ppm xpm').split()
 
 T_IMAGE = 0

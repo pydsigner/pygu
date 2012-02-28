@@ -19,7 +19,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-__version__ = '1.1'
+__version__ = '1.3'
+
+import string
+from pgpu.math_utils import Vector, limit
+
+from common import vcenter_blit
 
 import pygame
 from pygame.locals import *
@@ -90,13 +95,225 @@ class Button(ClickableWidget):
             self.cb(eman, gstate, event)
     
     def set_hover(self, eman, gstate, event, is_hovered):
-        # Save time by not assigning unneccessarily.
         if is_hovered and not self.hover:
             self.hover = True
             self.image = self.content[1]
         elif not is_hovered and self.hover:
             self.hover = False
             self.image = self.content[0]
+
+class Typable(Label):
+    '''
+    A base class for widgets that can typed in.
+    
+    NOTE: Be sure to call update() every frame, or changes won't show up.
+    '''
+    def __init__(self, groups, pos, warea, content, eman, **kw):
+        '''
+        Required Args:
+        See documentation for Label();
+        @warea, the area in which to check for clicks inside or outside the 
+         widget.
+        
+        Optional Keyword Args:
+        @font, the pygame font to be used for drawing the text (Defaults to the 
+         default pygame font in size 18);
+        @color, the color to be used for drawing the text (Defaults to black);
+        @margin, the text offset from the left side of the widget (Defaults to 
+         no margin).
+        '''
+        Label.__init__(self, groups, pos, content, eman)
+        
+        self.blank = content
+        self.font = kw.pop('font', pygame.font.Font(None, 18))
+        self.color = kw.pop('color', (0, 0, 0))
+        self.margin = (kw.pop('margin', 0), 0)
+        if kw:
+            raise TypeError(
+                    'These keyword args are not allowed: %s' % kw.keys())
+        
+        self.focus = False
+        self.reset()
+        
+        eman.hotspot.add_static([self.click_cb, lambda *args: None], warea)
+        eman.bind(self.type_cb, KEYDOWN)
+    
+    def reset(self):
+        self.text = []
+        self.cursor_loc = 0
+    
+    def click_cb(self, eman, gstate, event):
+        self.focus = True if self.rect.collidepoint(event.pos) else False
+    
+    def type_cb(self, eman, gstate, event):
+        if not self.focus:
+            return
+        if (event.unicode and event.unicode in string.printable 
+                and event.key != K_RETURN):
+            self.insert(event.unicode)
+        elif event.key == K_BACKSPACE:
+            self.bspace()
+        else:
+            self.handle_other(event)
+    
+    def handle_other(self, event):
+        '''
+        Override this to implement such things as delete and navigation.
+        '''
+    
+    def get(self):
+        '''
+        Get the text from the Typable().
+        '''
+        return ''.join(self.text)
+    
+    def insert(self, s):
+        '''
+        Insert string @s at the current cursor location.
+        '''
+        for c in s:
+            self.text.insert(self.cursor_loc, c)
+            self.cursor_loc += 1
+    
+    def bspace(self):
+        '''
+        Remove the character before the cursor.
+        '''
+        try:
+            self.text.pop(self.cursor_loc - 1)
+            self.cursor_loc -= 1
+        except IndexError:
+            pass
+    
+    def update(self):
+        '''
+        Update the image before drawing.
+        '''
+        self.image = self.blank.copy()
+        vcenter_blit(self.image, 
+                self.font.render(self.get(), True, self.color), 
+                self.margin)
+
+class Entry(Typable):
+    '''
+    A full featured Entry widget, which supports navigation, a cursor, delete,
+    and rudimentary copy-cut-paste (All of the widget's contents are 
+    copied/cut).
+    '''
+    def __init__(self, groups, pos, warea, content, cursor, eman, **kw):
+        '''
+        Required Args:
+        See documentation for Typable();
+        @cursor, the pygame surface that will be used as the cursor.
+        
+        Optional Keyword Args:
+        See documentation for Typable;
+        @callback, the function to call when Enter is hit, will be called with 
+         the Widget() as the only argument (Defaults to a null function);
+        @blink_frames, the number of updates before flipping the cursor from 
+         shown to hidden or vice versa (Defaults to None, never hide the 
+         cursor.)
+        '''
+        self.enter_cb = kw.pop('callback', lambda widget: None)
+        self.blink_frames = kw.pop('blink_frames', None)
+        
+        Typable.__init__(self, groups, pos, warea, content, eman, **kw)
+        
+        self.blinker = 1
+        self.cursor_shown = True
+        
+        self.cursor = cursor
+        pygame.scrap.init()
+    
+    def delete(self):
+        '''
+        Remove the character after the cursor.
+        '''
+        try:
+            self.text.pop(self.cursor_loc)
+        except IndexError:
+            pass
+    
+    def copy(self):
+        '''
+        Copy the text in the Entry() and place it on the clipboard.
+        '''
+        try:
+            pygame.scrap.put(SCRAP_TEXT, self.get())
+        except:
+            # pygame.scrap is experimental, allow for changes
+            pass
+    
+    def cut(self):
+        '''
+        Cut the text in the Entry() and place it on the clipboard.
+        '''
+        self.copy()
+        self.reset()
+    
+    def paste(self):
+        '''
+        Insert text from the clipboard at the cursor.
+        '''
+        try:
+            t = pygame.scrap.get(SCRAP_TEXT)
+            if t:
+                self.insert(t)
+        except:
+            # pygame.scrap is experimental, allow for changes
+            pass
+    
+    def handle_other(self, event):
+        if event.mod & KMOD_CTRL:
+            if event.key == K_c:
+                self.copy()
+            elif event.key == K_x:
+                self.cut()
+            elif event.key == K_v:
+                self.paste()
+        
+        elif event.key == K_HOME:
+            self.cursor_loc = 0
+        elif event.key == K_END:
+            self.cursor_loc = len(self.text)
+        elif event.key == K_DELETE:
+            self.delete()
+        elif event.key == K_RETURN:
+            self.enter_cb(self)
+        elif event.key == K_RIGHT:
+            self.cursor_loc += 1
+        elif event.key == K_LEFT:
+            self.cursor_loc -= 1
+        self.cursor_loc = limit(self.cursor_loc, 0, len(self.text))
+    
+    def update(self):
+        '''
+        Update the image before drawing.
+        '''
+        self.image = self.blank.copy()
+        
+        bf = self.font.render(''.join(self.text[:self.cursor_loc]), 
+                True, self.color)
+        br = bf.get_rect().move(self.margin)
+        
+        af = self.font.render(''.join(self.text[self.cursor_loc:]), 
+                True, self.color)
+        
+        cr = self.cursor.get_rect()
+        cvec = Vector(br.w - cr.w, 0) + self.margin
+        
+        vcenter_blit(self.image, bf, br)
+        vcenter_blit(self.image, af, br.topright)
+        
+        if self.cursor_shown and self.focus:
+            vcenter_blit(self.image, self.cursor, cvec)
+        
+        if self.blink_frames != None:
+            self.blinker += 1
+            self.blinker %= self.blink_frames
+            if not self.blinker:
+                self.cursor_shown = not self.cursor_shown
+
 
 class ScrollBar(ClickableWidget):
     '''
@@ -106,8 +323,38 @@ class ScrollBar(ClickableWidget):
     TODO: Implement!
     '''
 
-class Scrollable(Widget):
+class Scrollable(Label):
     '''
     A wrapper Widget() to allow scrolling. Supports ScrollBar()s.
-    TODO: Implement!
     '''
+    def __init__(self, widget, pos, size):
+        self.widget = widget
+        self.rect = Rect((0, 0), size).move(pos)
+        self.image = widget.image.copy()
+        self.offset = Vector()
+    
+    def scroll_x(self, pixels, relative=True):
+        '''
+        Negative is right, positive is left.
+        '''
+        if relative:
+            self.offset.x += int(pixels)
+        else:
+            self.offset.x = int(pixels)
+        
+    def scroll_y(self, pixels, relative=True):
+        '''
+        Negative is down, positive is up.
+        '''
+        if relative:
+            self.offset.y += int(pixels)
+        else:
+            self.offset.y = int(pixels)
+    
+    def update(self):
+        self.offset.x = limit(self.offset.x, 
+                0, self.widget.rect.w - self.rect.w)
+        self.offset.y = limit(self.offset.y, 
+                0, self.widget.rect.h - self.rect.h)
+        
+        self.image.blit(self.widget.image, self.offset)
