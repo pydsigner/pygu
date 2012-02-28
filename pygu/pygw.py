@@ -19,7 +19,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-__version__ = '1.3'
+__version__ = '1.4'
 
 import string
 from pgpu.math_utils import Vector, limit
@@ -305,7 +305,7 @@ class Entry(Typable):
         vcenter_blit(self.image, bf, br)
         vcenter_blit(self.image, af, br.topright)
         
-        if self.cursor_shown and self.focus:
+        if self.cursor_shown and self.focus and pygame.key.get_focused():
             vcenter_blit(self.image, self.cursor, cvec)
         
         if self.blink_frames != None:
