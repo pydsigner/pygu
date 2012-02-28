@@ -331,7 +331,8 @@ class Scrollable(Label):
         Label.__init__(self, groups, pos, bg, eman)
         self.widget = widget
         self.image = widget.image.copy()
-        self.widget.rect = self.rect
+        self.wrect = widget.rect.copy()
+        widget.rect = self.rect
         
         self.bg = bg
         self.offset = Vector()
@@ -358,8 +359,8 @@ class Scrollable(Label):
         self.image = self.bg.copy()
         
         self.offset.x = limit(self.offset.x, 
-                -self.widget.rect.w + self.rect.w, 0)
+                -self.wrect.w + self.rect.w, 0)
         self.offset.y = limit(self.offset.y, 
-                -self.rect.h + self.rect.h, 0)
+                -self.wrect.h + self.rect.h, 0)
         
         self.image.blit(self.widget.image, self.offset)
