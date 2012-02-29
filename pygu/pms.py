@@ -41,15 +41,15 @@ class Playlist(object):
     that may span several files. If, as in the example above, the second line 
     (group1/music2.group5/music8) is not blank, it will be played first but 
     only once. After one metasong is complete, another is selected. The musics 
-    of a metasong are identified by a '<group>/<title>' combo as on line 3. If 
+    of a metasong are identified by a '<group>/<title>' combo as on line 2. If 
     multiple musics are desired, they must be separated by a '.' as on line 2. 
     If, as on the last line, there is a '^' separator, then the musics before 
     the '^' will be played only when the metasong is newly selected; that is, 
     when the metasong that just finished is not the newly selected metasong. 
     This means that 'group8/music2' could be an intro for an unlimited loop of 
     'group8/music3' and 'group8/music4'.Also note the *2*: this tells the 
-    playlist to give a double chance of selecting to this track when shuffle is 
-    on. This value must be a positive integer, be at the beginning of a 
+    playlist to give a double chance of selecting to this metasong when shuffle 
+    is on. This value must be a positive integer, be at the beginning of a 
     metasong, and be between two asterisks.
     
     This implementation supports v1.2 weighted shuffling and folder hints.
