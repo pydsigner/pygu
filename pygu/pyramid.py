@@ -18,12 +18,12 @@ the Free Software Foundation, either version 3 of the License, or
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-You should have received a copy of the GNU General Public License
+GNU Lesser General Public License for more details.
+You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-__version__ = '1.13'
+__version__ = '1.13.1'
 
 import importlib, random, os, sys, pygame
 pygame.init()
@@ -47,8 +47,8 @@ del dummy
 ls = os.listdir
 join = os.path.join
 
-IMAGE_TYPES = ('jpg jpeg jpe png gif bmp pcx pcc tga tif tiff lbm pbm pgm ' + 
-                'ppm xpm').split()
+IMAGE_TYPES = ['jpg', 'jpeg', 'jpe', 'png', 'gif', 'bmp', 'pcx', 'pcc', 'tga', 
+        'tif', 'tiff', 'lbm', 'pbm', 'pgm', 'ppm', 'xpm']
 
 T_IMAGE = 0
 T_SOUND = 1

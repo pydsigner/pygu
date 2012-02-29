@@ -14,14 +14,14 @@ the Free Software Foundation, either version 3 of the License, or
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-You should have received a copy of the GNU General Public License
+GNU Lesser General Public License for more details.
+You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 import random
 
-__version__ = '1.2'
+__version__ = '1.2.1'
 
 class Playlist(object):
     '''
@@ -66,7 +66,8 @@ class Playlist(object):
         '''
         self.folders = lines[0].split(';') if lines else []
         try:
-            self.start = [m.split('/') for m in lines[1].split('.')] if lines[1] else []
+            self.start = ([m.split('/') for m in lines[1].split('.')] if 
+                    lines[1] else [])
         except:
             if strict:
                 raise ValueError(self.perrm % 1)
@@ -90,7 +91,8 @@ class Playlist(object):
                     chance = int(ul[1:e])
                     # We don't want to try to parse the weight!
                     ul = ul[e + 1:]
-                song = [[m.split('/') for m in group.split('.')] for group in ul.split('^', 2)]
+                song = [[m.split('/') for m in group.split('.')] 
+                        for group in ul.split('^', 2)]
             except:
                 if strict:
                     raise ValueError(self.perrm % lcount)
@@ -121,7 +123,9 @@ class Playlist(object):
             si += 1
     
     def _new_song(self):
-        'Used internally to get a metasong index.'
+        '''
+        Used internally to get a metasong index.
+        '''
         # We'll need this later
         s = self.song
         
@@ -142,7 +146,9 @@ class Playlist(object):
         self.pos = 0
     
     def _get_selectable(self):
-        'Used internally to get a group of choosable tracks.'
+        '''
+        Used internally to get a group of choosable tracks.
+        '''
         # Save some typing
         cursong = self.loop[self.song][0]
         
@@ -157,7 +163,9 @@ class Playlist(object):
         return s
     
     def _get_song(self):
-        'Used internally to get the current track and make sure it exists'
+        '''
+        Used internally to get the current track and make sure it exists.
+        '''
         # Try to get the current track from the start metasong
         if self.at_beginning:
             # Make sure it exists.
@@ -182,7 +190,9 @@ class Playlist(object):
         return s[self.pos]
     
     def begin(self):
-        'Start over and get a track.'
+        '''
+        Start over and get a track.
+        '''
         # Check for a start metasong
         if self.start:
             # We are in the beginning song
@@ -197,11 +207,15 @@ class Playlist(object):
         return self._get_song()
     
     def next(self):
-        'Get the next track.'
+        '''
+        Get the next track.
+        '''
         self.pos += 1
         return self._get_song()
     
     def next_song(self):
-        'Skip to the next song and return a track.'
+        '''
+        Skip to the next song and return a track.
+        '''
         self._new_song()
         return self._get_song()
