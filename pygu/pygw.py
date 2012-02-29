@@ -19,7 +19,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-__version__ = '1.4'
+__version__ = '1.5'
 
 import string
 from pgpu.math_utils import Vector, limit
@@ -197,8 +197,8 @@ class Typable(Label):
 class Entry(Typable):
     '''
     A full featured Entry widget, which supports navigation, a cursor, delete,
-    and rudimentary copy-cut-paste (All of the widget's contents are 
-    copied/cut).
+    autoscroll, and rudimentary copy-cut-paste (All of the widget's contents 
+    are copied/cut).
     '''
     def __init__(self, groups, pos, warea, content, cursor, eman, **kw):
         '''
@@ -302,11 +302,16 @@ class Entry(Typable):
         cr = self.cursor.get_rect()
         cvec = Vector(br.w - cr.w, 0) + self.margin
         
-        vcenter_blit(self.image, bf, br)
-        vcenter_blit(self.image, af, br.topright)
+        scroll = Vector()
+        
+        if cvec.x > self.rect.w:
+            scroll.x = self.rect.w - cvec.x - self.font.size(' ')[0]
+        
+        vcenter_blit(self.image, bf, scroll + br)
+        vcenter_blit(self.image, af, scroll + br.topright)
         
         if self.cursor_shown and self.focus and pygame.key.get_focused():
-            vcenter_blit(self.image, self.cursor, cvec)
+            vcenter_blit(self.image, self.cursor, scroll + cvec)
         
         if self.blink_frames != None:
             self.blinker += 1
