@@ -49,8 +49,8 @@ class Playlist(object):
     This means that 'group8/music2' could be an intro for an unlimited loop of 
     'group8/music3' and 'group8/music4'.Also note the *2*: this tells the 
     playlist to give a double chance of selecting to this track when shuffle is 
-    on. This value must an int(), be at the beginning of a metasong, and be 
-    between two asterisks.
+    on. This value must be a positive integer, be at the beginning of a 
+    metasong, and be between two asterisks.
     
     This implementation supports v1.2 weighted shuffling and folder hints.
     '''
