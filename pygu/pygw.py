@@ -60,7 +60,7 @@ class Container(object):
         
         self.shown = shown
         self.eman = eman
-        self.pos = pos
+        self.pos = Vector(pos)
         
         self.hotspot = eman.hotspot
         self.message = eman.message
@@ -144,12 +144,12 @@ class Container(object):
         '''
         Wraps around eman.bind().
         '''
-        if func not in self.event_cbs:
+        if func not in self._event_cbs:
             wrapped = self._wrap_cb(self, func)
             self._event_cbs[func] = wrapped
         else:
             wrapped = self._event_cbs[func]
-        self.eman.bind(self, wrapped, etype)
+        self.eman.bind(wrapped, etype)
     
     def unbind(self, func, etype):
         '''
@@ -174,17 +174,18 @@ class Scrollable(Container):
     
     def draw(self, surf):
         loc = self.eman.convert_point(self.pos)
-        msurf = Surface(loc + self.size, SRCALPHA)
+        msurf = pygame.Surface(loc + self.size, SRCALPHA)
         Container.draw(self, msurf)
-        surf.blit(msurf, (0, 0))
+        surf.blit(msurf, loc, (loc, loc + self.size))
     
     ### Internal methods
     
-    def _get_area(self, rect1, rect2):
-        return Rect((0, 0)).unionall(self)
+    def _get_area(self):
+        rs = [w.eman.convert_rect(w.rect) for w in self]
+        return Rect(0,0,0,0).unionall(rs)
     
     def _update(self):
-        x, y = self._get_area().size
+        x, y = self._get_area().size - self.pos
         self.offset.x = limit(self.offset.x, 0, x - self.size.x)
         self.offset.y = limit(self.offset.y, 0, y - self.size.y)
     
@@ -200,6 +201,7 @@ class Scrollable(Container):
             self.offset.x += int(pixels)
         else:
             self.offset.x = int(pixels)
+        self._update()
         
     def scroll_y(self, pixels, relative=True):
         '''
@@ -211,6 +213,7 @@ class Scrollable(Container):
             self.offset.y += int(pixels)
         else:
             self.offset.y = int(pixels)
+        self._update()
     
     ### Sub-widget tools
     
