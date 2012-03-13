@@ -19,22 +19,220 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-__version__ = '1.5.1'
+__version__ = '1.6'
 
 import string
+import itertools
 from pgpu.math_utils import Vector, limit
 
 from common import vcenter_blit
 
 import pygame
 from pygame.locals import *
-pygame.init()
+
+
+class Container(object):
+    '''
+    A combination of a Pygame Group and an EventManager, the Container() is a 
+    way to add encapsulation to PyGW. It does much the same job as the Tkinter 
+    Frame() widget does.
+    
+    In practice, the Container() allows its widgets to be oblivious of their 
+    position within the pygame display. Instead, they know their position 
+    within the Container(), which does all the hard work of translating these 
+    relative values into absolute values. This opens up the ability to code 
+    mega-widgets, as is possible in any full-desktop GUI toolkit.
+    '''
+    
+    class _wrap_cb(object):
+        def __init__(self, container, cb):
+            self.container = container
+            self.cb = cb
+        
+        def __call__(self, *args, **kw):
+            if self.container.shown:
+                self.cb(*args, **kw)
+    
+    def __init__(self, eman, pos, shown=True):
+        self.containers = []
+        self.widgets = []
+        self._event_cbs = {}
+        
+        self.shown = shown
+        self.eman = eman
+        self.pos = pos
+        
+        self.hotspot = eman.hotspot
+        self.message = eman.message
+    
+    def __iter__(self):
+        return itertools.chain(self.widgets, *self.containers)
+    
+    def draw(self, surf):
+        '''
+        Draw all widgets and sub-containers to @surf.
+        '''
+        if self.shown:
+            for w in self.widgets:
+                surf.blit(w.image, self.convert_rect(w.rect))
+            for c in self.containers:
+                c.draw(surf)
+    
+    ### Content control
+    
+    def add(self, *widgets):
+        '''
+        Place @widgets under the blitting hand of the Container(). Each arg 
+        must be a Widget(), a fellow Container(), or an iterable. Else, things 
+        get ugly...
+        '''
+        for w in widgets:
+            if isinstance(w, Widget):
+                self.widgets.append(w)
+            elif isinstance(w, Container):
+                self.containers.append(w)
+            else:
+                # If it isn't an iterable, we'll get an error here.
+                # Desired effect.
+                self.add(*w)
+    
+    def remove(self, *widgets):
+        '''
+        Remove @widgets from the blitting hand of the Container(). Each arg 
+        must be a Widget(), a fellow Container(), or an iterable. Else, things 
+        get ugly...
+        '''
+        for w in widgets:
+            if isinstance(w, Widget):
+                if w in self.widgets:
+                    self.widgets.remove(w)
+            elif isinstance(w, Container):
+                if w in self.containers:
+                    self.containers.remove(w)
+            else:
+                # If it isn't an iterable, we'll get an error here.
+                # Desired effect.
+                self.remove(*w)
+    
+    ### Sub-widget tools
+    
+    def convert_point(self, point):
+        '''
+        Converts the relative position of @point into an absolute position. To 
+        be used for event considerations, blitting is handled directly by the 
+        Container().
+        '''
+        return self.eman.convert_point(Vector(point) + self.pos)
+    
+    def convert_rect(self, rect):
+        '''
+        Converts the relative position of @rect into an absolute position.To be 
+        used for event considerations, blitting is handled directly by the 
+        Container().
+        '''
+        return self.eman.convert_rect(rect.move(self.pos))
+    
+    ### EventManager() compatibility methods
+    
+    def event(self, utype, **kw):
+        '''
+        Delegates to the event manager.
+        '''
+        self.eman.event(utype, **kw)
+    
+    def bind(self, func, etype):
+        '''
+        Wraps around eman.bind().
+        '''
+        if func not in self.event_cbs:
+            wrapped = self._wrap_cb(self, func)
+            self._event_cbs[func] = wrapped
+        else:
+            wrapped = self._event_cbs[func]
+        self.eman.bind(self, wrapped, etype)
+    
+    def unbind(self, func, etype):
+        '''
+        Wraps around eman.unbind().
+        '''
+        wrapped = self.event_cbs[func]
+        self.eman.unbind(self, wrapped, etype)
+
+
+class Scrollable(Container):
+    '''
+    A Container() with scrolling. Can be used with Scrollbar()s.
+    
+    NOTE: To add a background, add a Label() or other widget of the same size 
+    as this widget in the same location. The other widget will be drawn 
+    underneath this widget.
+    '''
+    def __init__(self, eman, pos, size, shown=True):
+        Container.__init__(self, eman, pos, shown)
+        self.offset = Vector()
+        self.size = Vector(size)
+    
+    def draw(self, surf):
+        loc = self.eman.convert_point(self.pos)
+        msurf = Surface(loc + self.size, SRCALPHA)
+        Container.draw(self, msurf)
+        surf.blit(msurf, (0, 0))
+    
+    ### Internal methods
+    
+    def _get_area(self, rect1, rect2):
+        return Rect((0, 0)).unionall(self)
+    
+    def _update(self):
+        x, y = self._get_area().size
+        self.offset.x = limit(self.offset.x, 0, x - self.size.x)
+        self.offset.y = limit(self.offset.y, 0, y - self.size.y)
+    
+    ### External interface
+    
+    def scroll_x(self, pixels, relative=True):
+        '''
+        Negative values for @pixels scroll left, positive values scroll right;
+        @relative determines whether to set the scroll-x value or change as 
+        above.
+        '''
+        if relative:
+            self.offset.x += int(pixels)
+        else:
+            self.offset.x = int(pixels)
+        
+    def scroll_y(self, pixels, relative=True):
+        '''
+        Negative values for @pixels scroll up, positive values scroll down;
+        @relative determines whether to set the scroll-y value or change as 
+        above.
+        '''
+        if relative:
+            self.offset.y += int(pixels)
+        else:
+            self.offset.y = int(pixels)
+    
+    ### Sub-widget tools
+    
+    def convert_point(self, point):
+        '''
+        Same as Container().convert_point(), but adds scrolling.
+        '''
+        return Container.convert_point(self, point) - self.offset
+    
+    def convert_rect(self, rect):
+        '''
+        Same as Container().convert_rect(), but adds scrolling.
+        '''
+        return Container.convert_rect(self, rect).move(-self.offset)
+
 
 class Widget(pygame.sprite.Sprite):
     '''
     Widget() provides the base for all other Widget()s. See Label() for a 
     reference Widget().
     '''
+
 
 class Label(Widget):
     '''
@@ -54,6 +252,7 @@ class Label(Widget):
         self.image = content
         self.eman = eman
 
+
 class ClickableWidget(Label):
     '''
     A base class for clickable Widget()s.
@@ -66,14 +265,19 @@ class ClickableWidget(Label):
         Label.__init__(self, groups, pos, content, eman)
         eman.hotspot.add_dynamic((self.callback, self.set_hover), self.get_rect)
     
+    ### Override these
+    
     def callback(self, eman, gstate, event):
         pass
     
     def set_hover(self, eman, gstate, event, is_hovered):
         pass
     
+    ### Useful defaults
+    
     def get_rect(self, gstate):
-        return [self.rect]
+        return [self.eman.convert_rect(self.rect)]
+
 
 class Button(ClickableWidget):
     '''
@@ -101,6 +305,7 @@ class Button(ClickableWidget):
         elif not is_hovered and self.hover:
             self.hover = False
             self.image = self.content[0]
+
 
 class Typable(Label):
     '''
@@ -138,9 +343,15 @@ class Typable(Label):
         eman.hotspot.add_static([self.click_cb, lambda *args: None], warea)
         eman.bind(self.type_cb, KEYDOWN)
     
-    def reset(self):
-        self.text = []
-        self.cursor_loc = 0
+    def bspace(self):
+        '''
+        Remove the character before the cursor.
+        '''
+        try:
+            self.text.pop(self.cursor_loc - 1)
+            self.cursor_loc -= 1
+        except IndexError:
+            pass
     
     def click_cb(self, eman, gstate, event):
         self.focus = True if self.rect.collidepoint(event.pos) else False
@@ -161,9 +372,18 @@ class Typable(Label):
         Override this to implement such things as delete and navigation.
         '''
     
+    ### External interface
+    
+    def reset(self):
+        '''
+        Clear the widget.
+        '''
+        self.text = []
+        self.cursor_loc = 0
+    
     def get(self):
         '''
-        Get the text from the Typable().
+        Get the text from the widget.
         '''
         return ''.join(self.text)
     
@@ -175,15 +395,7 @@ class Typable(Label):
             self.text.insert(self.cursor_loc, c)
             self.cursor_loc += 1
     
-    def bspace(self):
-        '''
-        Remove the character before the cursor.
-        '''
-        try:
-            self.text.pop(self.cursor_loc - 1)
-            self.cursor_loc -= 1
-        except IndexError:
-            pass
+    ### Updater
     
     def update(self):
         '''
@@ -194,9 +406,10 @@ class Typable(Label):
                 self.font.render(self.get(), True, self.color), 
                 self.margin)
 
+
 class Entry(Typable):
     '''
-    A full featured Entry widget, which supports navigation, a cursor, delete,
+    A full featured entry widget, which supports navigation, a cursor, delete,
     autoscroll, and rudimentary copy-cut-paste (All of the widget's contents 
     are copied/cut).
     '''
@@ -207,7 +420,7 @@ class Entry(Typable):
         @cursor, the pygame surface that will be used as the cursor.
         
         Optional Keyword Args:
-        See documentation for Typable;
+        See documentation for Typable();
         @callback, the function to call when Enter is hit, will be called with 
          the Widget() as the only argument (Defaults to a null function);
         @blink_frames, the number of updates before flipping the cursor from 
@@ -240,16 +453,17 @@ class Entry(Typable):
         '''
         try:
             pygame.scrap.put(SCRAP_TEXT, self.get())
+            return True
         except:
             # pygame.scrap is experimental, allow for changes
-            pass
+            return False
     
     def cut(self):
         '''
         Cut the text in the Entry() and place it on the clipboard.
         '''
-        self.copy()
-        self.reset()
+        if self.copy():
+            self.reset()
     
     def paste(self):
         '''
@@ -259,9 +473,10 @@ class Entry(Typable):
             t = pygame.scrap.get(SCRAP_TEXT)
             if t:
                 self.insert(t)
+                return True
         except:
             # pygame.scrap is experimental, allow for changes
-            pass
+            return False
     
     def handle_other(self, event):
         if event.mod & KMOD_CTRL:
@@ -284,6 +499,7 @@ class Entry(Typable):
             self.cursor_loc += 1
         elif event.key == K_LEFT:
             self.cursor_loc -= 1
+        
         self.cursor_loc = limit(self.cursor_loc, 0, len(self.text))
     
     def update(self):
@@ -327,45 +543,3 @@ class ScrollBar(ClickableWidget):
     * Supports mouse-wheels.
     TODO: Implement!
     '''
-
-class Scrollable(Label):
-    '''
-    A wrapper Widget() to allow scrolling. Supports ScrollBar()s.
-    '''
-    def __init__(self, widget, groups, bg, pos, eman):
-        Label.__init__(self, groups, pos, bg, eman)
-        self.widget = widget
-        self.image = widget.image.copy()
-        self.wrect = widget.rect.copy()
-        widget.rect = self.rect
-        
-        self.bg = bg
-        self.offset = Vector()
-    
-    def scroll_x(self, pixels, relative=True):
-        '''
-        Negative is right, positive is left.
-        '''
-        if relative:
-            self.offset.x += int(pixels)
-        else:
-            self.offset.x = int(pixels)
-        
-    def scroll_y(self, pixels, relative=True):
-        '''
-        Negative is down, positive is up.
-        '''
-        if relative:
-            self.offset.y += int(pixels)
-        else:
-            self.offset.y = int(pixels)
-    
-    def update(self):
-        self.image = self.bg.copy()
-        
-        self.offset.x = limit(self.offset.x, 
-                -self.wrect.w + self.rect.w, 0)
-        self.offset.y = limit(self.offset.y, 
-                -self.wrect.h + self.rect.h, 0)
-        
-        self.image.blit(self.widget.image, self.offset)

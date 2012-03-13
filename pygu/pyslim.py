@@ -21,13 +21,14 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 __all__ = ['load']
 
 import importlib
 
 loaders = []
 ldict = {}
+
 
 def load(filename, default=None):
     '''
@@ -40,6 +41,7 @@ def load(filename, default=None):
     else:
         return default
 
+
 def _loader(d):
     res = {}
     try:
@@ -50,6 +52,7 @@ def _loader(d):
     except ImportError:
         pass
     return res
+
 
 class BaseSlimLoader(object):
     '''
@@ -85,26 +88,29 @@ class BaseSlimLoader(object):
     def items(self):
         return self.obj.items()
     has_key = __contains__
+    
     def clear(self):
         self.obj.clear()
     def pop(self, key):
         return self.obj.pop(key)
     def update(self, other=None, **kw):
         self.obj.update(other, **kw)
-        
     def save(self):
         self.obj.save()
+
 
 class MutagenLoader(BaseSlimLoader):
     pass
 
 loaders.append(MutagenLoader)
 
+
 class TagPyLoader(BaseSlimLoader):
     # TODO: Implement!
     pass
 
 loaders.append(TagPyLoader)
+
 
 class KaaLoader(BaseSlimLoader):
     def __init__(self, filename):
@@ -115,14 +121,17 @@ class KaaLoader(BaseSlimLoader):
     
     def values(self):
         return [self.obj[k] for k in self.obj.keys()]
+    
     def items(self):
         return zip(self.keys(), self.values())
+    
     def update(self, other=None, **kw):
         if other:
             for k in other:
                 self.obj[k] = other[k]
         for k in kw:
             self.obj[k] = kw[k]
+
 
 # Do our loading
 MutagenLoader.file_mapping = _loader({

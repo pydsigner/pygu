@@ -23,10 +23,16 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-__version__ = '1.13.1'
+__version__ = '1.14'
 
-import importlib, random, os, sys, pygame
-pygame.init()
+import importlib
+import random
+import os
+import sys
+import pygame
+
+from os import listdir as ls
+from os.path import join
 
 from pms import Playlist
 from common import get_ext
@@ -39,13 +45,11 @@ from pgpu.compatibility import *
 loaders = {}
 # Use the pyslim interface to any available loaders
 import pyslim
-dummy = lambda filename: {}  # The default; presents all the interface we need
+# The default; presents all the interface we need
+dummy = lambda filename: {}
 for ext in ['ogg', 'mp3']:
     loaders[ext] = pyslim.ldict.get(ext, dummy)
 del dummy
-
-ls = os.listdir
-join = os.path.join
 
 IMAGE_TYPES = ['jpg', 'jpeg', 'jpe', 'png', 'gif', 'bmp', 'pcx', 'pcc', 'tga', 
         'tif', 'tiff', 'lbm', 'pbm', 'pgm', 'ppm', 'xpm']
@@ -83,6 +87,7 @@ def guess_type(fl):
     else:
         return T_OTHER
 
+
 class Sound(pygame.mixer.Sound):
     def __init__(self, snd, resources):
         pygame.mixer.Sound.__init__(self, snd)
@@ -92,6 +97,7 @@ class Sound(pygame.mixer.Sound):
         self.resources.get_channel().play(self, *args, **kw)
     def set_volume(self):
         pygame.mixer.Sound.set_volume(self, self.resources.s_vol)
+
 
 class Resources(object):
     '''
@@ -160,6 +166,8 @@ class Resources(object):
         self.m_vol = .13
         self.s_vol = .13
     
+    ### Internal loader methods
+    
     def load_image(self, loc, title, group):
         '''
         Used internally when loading images. You should probably use 
@@ -167,6 +175,7 @@ class Resources(object):
         '''
         self.images.setdefault(group, {})
         self.images[group][title] = pygame.image.load(loc).convert_alpha()
+    
     def load_music(self, loc, title, group):
         '''
         Used internally when loading music. You should probably use 
@@ -174,6 +183,7 @@ class Resources(object):
         '''
         self.music.setdefault(group, {})
         self.music[group][title] = loc
+    
     def load_playlist(self, loc, title):
         '''
         Used internally when loading playlists. You should probably use 
@@ -182,6 +192,7 @@ class Resources(object):
         lines = [l.strip() for l in open(loc).readlines()]
         self.playlists.setdefault(title, [])
         self.playlists[title].append(Playlist(lines, True))
+    
     def load_sound(self, loc, title, group):
         '''
         Used internally when loading sounds. You should probably use 
@@ -189,6 +200,7 @@ class Resources(object):
         '''
         self.sounds.setdefault(group, {})
         self.sounds[group][title] = Sound(loc, self)
+    
     def load_code(self, path, package, callwith):
         '''
         Used internally when loading code. You should probably use 
@@ -199,7 +211,8 @@ class Resources(object):
         del sys.path[0]
         for obj in g_o(callwith):
             self.code[obj.title.lower()] = obj
-        
+    
+    
     def load_objects(self, dirs=[], callwith={}):
         '''
         Call this to load resources from each dir in @dirs. Code resources will 
@@ -229,6 +242,7 @@ class Resources(object):
                     elif ty == T_PLAYLIST:
                         self.load_playlist(full, fl_n)
     
+    
     def get_playlist(self):
         return random.choice(self.playlists[self.cur_playlist])
     
@@ -241,11 +255,13 @@ class Resources(object):
         if plylst != self.cur_playlist or force:
             self.cur_playlist = plylst
             self.play_song(self.get_playlist().begin())
+    
     def next_song(self):
         '''
         Go to the next song in the playlist.
         '''
         self.play_song(self.get_playlist().next())
+    
     def play_song(self, stup):
         group, title = stup
         f = self.music[group][title]
@@ -253,6 +269,8 @@ class Resources(object):
         ext = get_ext(f)
         # Can take a start time from the music's metadata!
         pygame.mixer.music.play(0, float(loaders[ext](f).get('gstart', [0])[0]))
+    
+    ### Change volumes
     
     def set_m_vol(self, vol=None, relative=False):
         '''
@@ -264,6 +282,7 @@ class Resources(object):
                 vol += self.m_vol
             self.m_vol = min(max(vol, 0), 1)
         pygame.mixer.music.set_volume(self.m_vol)
+    
     def set_s_vol(self, vol=None, relative=False):
         '''
         Set the volume of all sounds. If @vol != None, It will be changed to 
@@ -276,6 +295,8 @@ class Resources(object):
         for sgroup in self.sounds.values():
             for snd in sgroup.values():
                 snd.set_volume()
+    
+    ### Resource fetchers
     
     def get_sound(self, title, group):
         '''
@@ -300,6 +321,7 @@ class Resources(object):
             c = pygame.mixer.find_channel()
         return c
 
+
 class GameState(object):
     '''
     This class is designed to be a holder for any sort of data you wish to 
@@ -309,29 +331,36 @@ class GameState(object):
     def __init__(self, groups={}):
         self.groups = {}
     
+    ### Group control methods
+    
     def add_groups(self, groups={}):
         self.groups.update(groups)
+    
     def remove_group(self, group):
         del self.groups[group]
+    
     def remove_groups(self, groups=[]):
         for group in groups:
             self.remove_group(group)
+    
     def get_group(self, group):
         return self.groups[group]
+    
     def get_groups(self, groups=[]):
         res = {}
         for group in groups:
             res[group] = self.get_group(group)
         return res
+    
     def empty_groups(self):
         self.groups.clear()
+
 
 class EventManager(object):
     '''
     An event manager for complex applications with a necessity for run-time 
     customizable event handling.
     '''
-    
     class message(Exception):
         pass
     
@@ -354,6 +383,8 @@ class EventManager(object):
         self.gstate = gstate
         self.event_funcs = {}
     
+    ### Event registering
+    
     def bind(self, func, etype):
         '''
         Register @func for execution when events with `.type` of @etype 
@@ -374,6 +405,26 @@ class EventManager(object):
         i= self.event_funcs[etype].index(func)
         del self.event_funcs[etype][i]
     
+    ### pygw.Container() compatibility methods
+    
+    def convert_point(self, point):
+        '''
+        Converts the relative position of @point into an absolute position. 
+        Does nothing in this class, but exists for the sake of the 
+        pygw.Container() class.
+        '''
+        return point
+    
+    def convert_rect(self, rect):
+        '''
+        Converts the relative position of @rect into an absolute position. Does 
+        nothing in this class, but exists for the sake of the pygw.Container() 
+        class.
+        '''
+        return rect
+    
+    ### Meta-event utility method
+    
     def event(self, utype, **kw):
         '''
         Make a meta-event with a utype of @type. **@kw works the same as for 
@@ -382,6 +433,8 @@ class EventManager(object):
         d = {'utype': utype}
         d.update(kw)
         pygame.event.post(pygame.event.Event(METAEVENT, d))
+    
+    ### Event loop
     
     def loop(self, events=[]):
         '''
@@ -396,6 +449,7 @@ class EventManager(object):
         except self.message as e:
             return e.message
 
+
 class HotspotManager(object):
     '''
     An addon to EventManager that allows dynamic mouse-action-in-area binding.
@@ -407,12 +461,15 @@ class HotspotManager(object):
         emanager.bind(self.execute, pygame.MOUSEBUTTONUP)
         emanager.bind(self.exec_hover, pygame.MOUSEMOTION)
         self.emanager = emanager
+    
     def __del__(self):
         self.emanager.unbind(self.execute, pygame.MOUSEBUTTONDOWN)
         self.emanager.unbind(self.execute, pygame.MOUSEBUTTONUP)
         self.emanager.unbind(self.exec_hover, pygame.MOUSEMOTION)
     
-    def add_static(self, cfuncs, rect):
+    ### Event registration
+    
+    def add_static(self, cfuncs, rect, absolute=True):
         '''
         @cfuncs is a (button_action_func, hover_func) tuple. button_action_func 
         should have a 
@@ -425,6 +482,7 @@ class HotspotManager(object):
         mouse is clicked inside @rect.
         '''
         self.static.append((cfuncs, rect))
+    
     def add_dynamic(self, cfuncs, rfunc):
         '''
         @cfuncs is a (button_action_func, hover_func) tuple. button_action_func 
@@ -438,6 +496,8 @@ class HotspotManager(object):
         mouse is clicked inside any of the Rect()s provided by @rfunc.
         '''
         self.dynamic.append((cfuncs, rfunc))
+    
+    ### Event handling
     
     def execute(self, eman, gstate, event):
         loc = event.pos
@@ -470,6 +530,7 @@ class HotspotManager(object):
                     break
             t[0][1](eman, gstate, event, y)
 
+
 class EventManagerPlus(EventManager):
     '''
     A version of EventManager with a builtin HotspotManager.
@@ -477,6 +538,7 @@ class EventManagerPlus(EventManager):
     def __init__(self, gstate):
         EventManager.__init__(self, gstate)
         self.hotspot = HotspotManager(self)
+
 
 class StateManager(GameState):
     '''
@@ -492,17 +554,25 @@ class StateManager(GameState):
     def __getitem__(self, key):
         return self.states[key]
     
+    ### State manipulation methods
+    
     def add_states(self, *states):
+        '''
+        Add @states.
+        '''
         for state in states:
             self.states[state] = EventManagerPlus(self)
+    
     def get_state(self, state=None):
         '''
         If @state is None, return the title of the current state. Otherwise, 
         return the EventManager for @state.
         '''
         return self._state if state is None else self.states[state]
+    
     def get_states(self):
         return self.states
+    
     def set_state(self, state):
         '''
         Set the state to @state.
@@ -510,9 +580,11 @@ class StateManager(GameState):
         self._state = state
     state = property(get_state, set_state)
     
+    ### Event loop
+    
     def loop(self, events=[]):
         '''
         Run the event processing loop with @events.
         '''
-        self.get_state(self.state).loop(events)
+        self[self.state].loop(events)
 
