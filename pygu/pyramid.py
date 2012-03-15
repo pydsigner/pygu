@@ -23,7 +23,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-__version__ = '1.14'
+__version__ = '1.14.1'
 
 import importlib
 import random
@@ -38,7 +38,6 @@ from pms import Playlist
 from common import get_ext
 
 from pgpu.math_utils import limit
-from pgpu.compatibility import *
 
 # an advanced feature that allows loading a start time for musics
 # as well as a certain decision between ogg music and ogg sounds

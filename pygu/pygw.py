@@ -19,7 +19,7 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-__version__ = '1.6'
+__version__ = '1.7'
 
 import string
 import itertools
@@ -182,10 +182,10 @@ class Scrollable(Container):
     
     def _get_area(self):
         rs = [w.eman.convert_rect(w.rect) for w in self]
-        return Rect(0,0,0,0).unionall(rs)
+        return Rect(0,0,0,0).unionall(rs).size - self.pos
     
     def _update(self):
-        x, y = self._get_area().size - self.pos
+        x, y = self._get_area()
         self.offset.x = limit(self.offset.x, 0, x - self.size.x)
         self.offset.y = limit(self.offset.y, 0, y - self.size.y)
     
