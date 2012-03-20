@@ -19,7 +19,7 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-__version__ = '1.7'
+__version__ = '1.7.1'
 
 import string
 import itertools
@@ -44,7 +44,7 @@ class Container(object):
     mega-widgets, as is possible in any full-desktop GUI toolkit.
     '''
     
-    class _wrap_cb(object):
+    class _WrapCB(object):
         def __init__(self, container, cb):
             self.container = container
             self.cb = cb
@@ -88,7 +88,9 @@ class Container(object):
         '''
         for w in widgets:
             if isinstance(w, Widget):
-                self.widgets.append(w)
+                if w not in self.widgets:
+                    self.widgets.append(w)
+                    
             elif isinstance(w, Container):
                 self.containers.append(w)
             else:
@@ -145,7 +147,7 @@ class Container(object):
         Wraps around eman.bind().
         '''
         if func not in self._event_cbs:
-            wrapped = self._wrap_cb(self, func)
+            wrapped = self._WrapCB(self, func)
             self._event_cbs[func] = wrapped
         else:
             wrapped = self._event_cbs[func]

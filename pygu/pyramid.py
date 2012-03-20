@@ -23,7 +23,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-__version__ = '1.14.1'
+__version__ = '1.14.2'
 
 import importlib
 import random
@@ -360,10 +360,10 @@ class EventManager(object):
     An event manager for complex applications with a necessity for run-time 
     customizable event handling.
     '''
-    class message(Exception):
+    class Message(Exception):
         pass
     
-    class metaevent(object):
+    class MetaEvent(object):
         def __init__(self, event):
             self.__dict__['e'] = event
         def __getattr__(self, attr):
@@ -442,11 +442,11 @@ class EventManager(object):
         try:
             for e in events:
                 if e.type == METAEVENT:
-                    e = self.metaevent(e)
+                    e = self.MetaEvent(e)
                 for func in self.event_funcs.get(e.type, []):
                     func(self, self.gstate, e)
-        except self.message as e:
-            return e.message
+        except self.Message as e:
+            return e.Message
 
 
 class HotspotManager(object):
