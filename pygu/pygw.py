@@ -19,7 +19,7 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-__version__ = '1.7.1'
+__version__ = '2.0'
 
 import string
 import itertools
@@ -31,7 +31,79 @@ import pygame
 from pygame.locals import *
 
 
-class Container(object):
+def is_container(c):
+    '''
+    Utility function to check for containerhood.
+    '''
+    return getattr(c, '_iscontainer', False) or isinstance(c, Container)
+
+
+def is_widget(w):
+    '''
+    Utility function to check for widgetness.
+    '''
+    return getattr(w, '_iswidget', False) or isinstance(w, Widget)
+
+
+class Base(object):
+    '''
+    Implements the core for both containers and widgets.
+    '''
+    _iswidget = _iscontainer = False
+    
+    def __init__(self, container):
+        self.container = None
+        
+        if is_container(container):
+            # Can't add to EventManager()s!
+            self.add_to(container)
+        else:
+            self.add_internal(container)
+    
+    def __del__(self):
+        self.kill()
+    
+    def update(self):
+        '''
+        Dummy update method.
+        '''
+        pass
+    
+    def kill(self):
+        if is_container(self.container):
+            self.container.remove(self)
+    
+    ### Content management
+    
+    def add_to(self, container):
+        '''
+        Add the class to @container.
+        '''
+        if self.container:
+            self.remove_from(self.container)
+        container.add(self)
+    
+    def remove_from(self, container):
+        '''
+        Remove the class from @container.
+        '''
+        if self in container:
+            container.remove(self)
+    
+    def add_internal(self, c):
+        '''
+        Used internally to notify the class that @c now contains it.
+        '''
+        self.container = c
+    
+    def remove_internal(self, c):
+        '''
+        Used internally to notify the class that @c no longer contains it.
+        '''
+        self.container = None
+
+
+class Container(Base):
     '''
     A combination of a Pygame Group and an EventManager, the Container() is a 
     way to add encapsulation to PyGW. It does much the same job as the Tkinter 
@@ -53,20 +125,30 @@ class Container(object):
             if self.container.shown:
                 self.cb(*args, **kw)
     
-    def __init__(self, eman, pos, shown=True):
-        self.containers = []
-        self.widgets = []
+    _iscontainer = True
+    
+    def __init__(self, container, pos, shown=True):
+        Base.__init__(self, container)
+        
+        self.containers = set()
+        self.widgets = set()
         self._event_cbs = {}
         
         self.shown = shown
-        self.eman = eman
         self.pos = Vector(pos)
         
-        self.hotspot = eman.hotspot
-        self.message = eman.message
+        self.hotspot = container.hotspot
+        self.Message = container.Message
+    
+    def __contains__(self, w):
+        return w in self.widgets or w in self.containers
     
     def __iter__(self):
         return itertools.chain(self.widgets, *self.containers)
+    
+    def update(self):
+        for w in self:
+            w.update()
     
     def draw(self, surf):
         '''
@@ -78,6 +160,18 @@ class Container(object):
             for c in self.containers:
                 c.draw(surf)
     
+    def kill(self):
+        '''
+        Remove the class from its container, contained items and sub-widgets. 
+        Runs automatically when the class is garbage collected.
+        '''
+        Base.kill(self)
+        
+        for c in self.containers:
+            c.remove_internal(self)
+        for w in self.widgets:
+            w.remove_internal(self)
+    
     ### Content control
     
     def add(self, *widgets):
@@ -87,12 +181,14 @@ class Container(object):
         get ugly...
         '''
         for w in widgets:
-            if isinstance(w, Widget):
+            if is_widget(w):
                 if w not in self.widgets:
-                    self.widgets.append(w)
-                    
-            elif isinstance(w, Container):
-                self.containers.append(w)
+                    self.widgets.add(w)
+                    w.add_internal(self)
+            elif is_container(w):
+                if w not in self.containers:
+                    self.containers.add(w)
+                    w.add_internal(self)
             else:
                 # If it isn't an iterable, we'll get an error here.
                 # Desired effect.
@@ -105,12 +201,12 @@ class Container(object):
         get ugly...
         '''
         for w in widgets:
-            if isinstance(w, Widget):
-                if w in self.widgets:
-                    self.widgets.remove(w)
-            elif isinstance(w, Container):
-                if w in self.containers:
-                    self.containers.remove(w)
+            if w in self.widgets:
+                self.widgets.remove(w)
+                w.remove_internal(self)
+            elif w in self.containers:
+                self.containers.remove(w)
+                w.remove_internal(self)
             else:
                 # If it isn't an iterable, we'll get an error here.
                 # Desired effect.
@@ -124,7 +220,7 @@ class Container(object):
         be used for event considerations, blitting is handled directly by the 
         Container().
         '''
-        return self.eman.convert_point(Vector(point) + self.pos)
+        return self.container.convert_point(Vector(point) + self.pos)
     
     def convert_rect(self, rect):
         '''
@@ -132,33 +228,33 @@ class Container(object):
         used for event considerations, blitting is handled directly by the 
         Container().
         '''
-        return self.eman.convert_rect(rect.move(self.pos))
+        return self.container.convert_rect(rect.move(self.pos))
     
     ### EventManager() compatibility methods
     
     def event(self, utype, **kw):
         '''
-        Delegates to the event manager.
+        Delegates to the event manager/container.
         '''
-        self.eman.event(utype, **kw)
+        self.container.event(utype, **kw)
     
     def bind(self, func, etype):
         '''
-        Wraps around eman.bind().
+        Wraps around container.bind().
         '''
         if func not in self._event_cbs:
             wrapped = self._WrapCB(self, func)
             self._event_cbs[func] = wrapped
         else:
             wrapped = self._event_cbs[func]
-        self.eman.bind(wrapped, etype)
+        self.container.bind(wrapped, etype)
     
     def unbind(self, func, etype):
         '''
-        Wraps around eman.unbind().
+        Wraps around container.unbind().
         '''
         wrapped = self.event_cbs[func]
-        self.eman.unbind(self, wrapped, etype)
+        self.container.unbind(self, wrapped, etype)
 
 
 class Scrollable(Container):
@@ -175,7 +271,7 @@ class Scrollable(Container):
         self.size = Vector(size)
     
     def draw(self, surf):
-        loc = self.eman.convert_point(self.pos)
+        loc = self.container.convert_point(self.pos)
         msurf = pygame.Surface(loc + self.size, SRCALPHA)
         Container.draw(self, msurf)
         surf.blit(msurf, loc, (loc, loc + self.size))
@@ -183,7 +279,7 @@ class Scrollable(Container):
     ### Internal methods
     
     def _get_area(self):
-        rs = [w.eman.convert_rect(w.rect) for w in self]
+        rs = [w.container.convert_rect(w.rect) for w in self]
         return Rect(0,0,0,0).unionall(rs).size - self.pos
     
     def _update(self):
@@ -232,43 +328,41 @@ class Scrollable(Container):
         return Container.convert_rect(self, rect).move(-self.offset)
 
 
-class Widget(pygame.sprite.Sprite):
+class Widget(Base):
     '''
     Widget() provides the base for all other Widget()s. See Label() for a 
     reference Widget().
     '''
+    _iswidget = True
 
 
 class Label(Widget):
     '''
     A basic Widget() that simply displays some content.
     '''
-    def __init__(self, groups, pos, content, eman):
+    def __init__(self, container, pos, content):
         '''
-        @groups is a list of the groups to which the Label() should be added;
+        @container the container to which the Label() should be added;
         @pos is the position of the upper-left corner of the Label();
         @content is the Surface() to display;
-        @gstate is a reference (unused by this simple class) to an 
-         EventManagerPlus() object.
         '''
-        Widget.__init__(self, *groups)
+        Widget.__init__(self, container)
         self.rect = content.get_rect()
         self.rect.move_ip(pos)
         self.image = content
-        self.eman = eman
 
 
 class ClickableWidget(Label):
     '''
     A base class for clickable Widget()s.
     '''
-    def __init__(self, groups, pos, content, eman):
+    def __init__(self, container, pos, content):
         '''
         See documentation for Label();
-        @eman *is* used, so don't supply a dummy!
         '''
-        Label.__init__(self, groups, pos, content, eman)
-        eman.hotspot.add_dynamic((self.callback, self.set_hover), self.get_rect)
+        Label.__init__(self, container, pos, content)
+        container.hotspot.add_dynamic(
+                (self.callback, self.set_hover), self.get_rect)
     
     ### Override these
     
@@ -281,14 +375,14 @@ class ClickableWidget(Label):
     ### Useful defaults
     
     def get_rect(self, gstate):
-        return [self.eman.convert_rect(self.rect)]
+        return [self.container.convert_rect(self.rect)]
 
 
 class Button(ClickableWidget):
     '''
     A basic Button Widget().
     '''
-    def __init__(self, groups, pos, content, callback, eman):
+    def __init__(self, container, pos, content, callback):
         '''
         See documentation for ClickableWidget();
         @content should be a (normal_content, active_content) tuple;
@@ -297,7 +391,7 @@ class Button(ClickableWidget):
         self.cb = callback
         self.hover = False
         self.content = content
-        ClickableWidget.__init__(self, groups, pos, content[0], eman)
+        ClickableWidget.__init__(self, container, pos, content[0])
     
     def callback(self, eman, gstate, event):
         if event.type == MOUSEBUTTONDOWN and event.button == 1:
@@ -318,7 +412,7 @@ class Typable(Label):
     
     NOTE: Be sure to call update() every frame, or changes won't show up.
     '''
-    def __init__(self, groups, pos, warea, content, eman, **kw):
+    def __init__(self, container, pos, warea, content, **kw):
         '''
         Required Args:
         See documentation for Label();
@@ -332,7 +426,7 @@ class Typable(Label):
         @margin, the text offset from the left side of the widget (Defaults to 
          no margin).
         '''
-        Label.__init__(self, groups, pos, content, eman)
+        Label.__init__(self, container, pos, content)
         
         self.blank = content
         self.font = kw.pop('font', pygame.font.Font(None, 18))
@@ -345,8 +439,9 @@ class Typable(Label):
         self.focus = False
         self.reset()
         
-        eman.hotspot.add_static([self.click_cb, lambda *args: None], warea)
-        eman.bind(self.type_cb, KEYDOWN)
+        container.hotspot.add_static(
+                [self.click_cb, lambda *args: None], warea)
+        container.bind(self.type_cb, KEYDOWN)
     
     def bspace(self):
         '''
@@ -418,7 +513,7 @@ class Entry(Typable):
     autoscroll, and rudimentary copy-cut-paste (All of the widget's contents 
     are copied/cut).
     '''
-    def __init__(self, groups, pos, warea, content, cursor, eman, **kw):
+    def __init__(self, container, pos, warea, content, cursor, **kw):
         '''
         Required Args:
         See documentation for Typable();
@@ -435,7 +530,7 @@ class Entry(Typable):
         self.enter_cb = kw.pop('callback', lambda widget: None)
         self.blink_frames = kw.pop('blink_frames', None)
         
-        Typable.__init__(self, groups, pos, warea, content, eman, **kw)
+        Typable.__init__(self, container, pos, warea, content, **kw)
         
         self.blinker = 1
         self.cursor_shown = True

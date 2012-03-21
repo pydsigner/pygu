@@ -308,7 +308,11 @@ class Resources(object):
         '''
         return self.images[group.lower()][title.lower()]
     def get_code(self, title):
+        '''
+        Retrieve code object @title.
+        '''
         return self.code[title.lower()]
+    
     def get_channel(self):
         '''
         Used internally when playing sounds.
@@ -446,7 +450,7 @@ class EventManager(object):
                 for func in self.event_funcs.get(e.type, []):
                     func(self, self.gstate, e)
         except self.Message as e:
-            return e.Message
+            return e.message
 
 
 class HotspotManager(object):

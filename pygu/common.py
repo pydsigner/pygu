@@ -2,11 +2,11 @@
 Shared information, classes and functions for PyGU.
 '''
 from pgpu.math_utils import Vector as _vec
-from os.path import splitext as _spltext
+from os.path import extsep as _extsep
 
 
 def get_ext(fl):
-    return _spltext(fl)[1]
+    return fl.split(_extsep)[-1]
 
 
 def _blitter(loc, target, source, dest, area, special_flags):
