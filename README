@@ -8,11 +8,21 @@ pydsigner@gmail.com
 http://github.com/pydsigner/pygu
 
 
-PYGU is distributed under the LGPLv3 (or greater), see COPYING for details.
+PyGU is distributed under the LGPLv3 (or greater), see COPYING for details.
 
 --------------------------------------------------------------------------------
 
-If you would like to contribute to PYGU in any way, whether through bug 
+To see some examples:
+
+$ cd examples
+
+And then:
+
+$ python test_widgets.py
+
+--------------------------------------------------------------------------------
+
+If you would like to contribute to PyGU in any way, whether through bug 
 reports, bug fixes, better code, or new code altogether, please follow these 
 instructions:
 
@@ -31,5 +41,4 @@ instructions:
 
 If you use this library to do something useful, be sure to let me know! 
 Sometimes a short "Good work!" message is enough to make a programmer feel 
-rewarded. And of course, "Wrote a library that was used in X many other 
-people's projects" always looks good on a resume!
+rewarded.
