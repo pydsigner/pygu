@@ -23,7 +23,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-__version__ = '1.14.2'
+__version__ = '1.15'
 
 import importlib
 import random
@@ -34,10 +34,11 @@ import pygame
 from os import listdir as ls
 from os.path import join
 
+from pgpu.math_utils import limit
+
 from pms import Playlist
 from common import get_ext
 
-from pgpu.math_utils import limit
 
 # an advanced feature that allows loading a start time for musics
 # as well as a certain decision between ogg music and ogg sounds
@@ -62,38 +63,16 @@ T_OTHER = 5
 
 METAEVENT = 31
 
-def guess_type(fl):
-    ext = get_ext(fl)
-    if ext in IMAGE_TYPES:
-        return T_IMAGE
-    elif ext in ['wav']:
-        return T_SOUND
-    elif ext in ['mp3']:
-        return T_MUSIC
-    elif ext in ['ogg']:
-        tag = loaders[ext](fl).get('gtype')
-        if tag != None:
-            # trump the 100 KB rule by setting the gtype tag in metadata
-            return int(tag)
-        elif os.path.getsize(fl) > 1024 * 100:    # 100 KB
-            return T_MUSIC
-        else:
-            return T_SOUND
-    elif ext in ['py', 'pyc']:
-        return T_CODE
-    elif ext in ['pms']:
-        return T_PLAYLIST
-    else:
-        return T_OTHER
-
 
 class Sound(pygame.mixer.Sound):
     def __init__(self, snd, resources):
         pygame.mixer.Sound.__init__(self, snd)
         self.resources = resources
         self.set_volume()
+    
     def play(self, *args, **kw):
         self.resources.get_channel().play(self, *args, **kw)
+    
     def set_volume(self):
         pygame.mixer.Sound.set_volume(self, self.resources.s_vol)
 
@@ -165,7 +144,91 @@ class Resources(object):
         self.m_vol = .13
         self.s_vol = .13
     
+    ### Filetype getter
+    
+    def guess_type(self, fl):
+        ext = get_ext(fl)
+        if ext in IMAGE_TYPES:
+            return T_IMAGE
+        elif ext in ['wav']:
+            return T_SOUND
+        elif ext in ['mp3']:
+            return T_MUSIC
+        elif ext in ['ogg']:
+            tag = self.get_meta(fl, 'gtype')
+            if tag != None:
+                # trump the 100 KB rule by setting the gtype tag in metadata
+                return int(tag)
+            elif self.file_size(fl) > 1024 * 100:    # 100 KB
+                return T_MUSIC
+            else:
+                return T_SOUND
+        elif ext in ['py', 'pyc']:
+            return T_CODE
+        elif ext in ['pms']:
+            return T_PLAYLIST
+        return T_OTHER
+    
+    ### Audio tag getter method
+    
+    def get_meta(self, fl, key, default=None):
+        '''
+        Gets meta @key for audio file @fl with default @default.
+        
+        This the default meta getter just uses the pyslim module to get meta.
+        '''
+        return loaders[get_ext(fl)](fl).get(key, default)
+    
+    ### File getting methods
+    
+    def list_files(self, *folders):
+        '''
+        Gets a list of the files in @folders.
+        
+        This the default file lister just lists files off the filesystem.
+        '''
+        return sum((ls(folder) for folder in folders), [])
+    
+    def load_file(self, fl):
+        '''
+        Returns a file-like object for path @fl.
+        
+        This the default file loader just opens files off the filesystem.
+        '''
+        return open(fl, 'rb')
+    
+    def is_file(self, fl):
+        '''
+        Returns whether @fl is a file.
+        
+        This the default file-ness checker just uses os.path.isfile().
+        '''
+        return os.path.isfile(fl)
+    
+    def file_size(self, fl):
+        '''
+        Returns the size of file @fl.
+        
+        This the default file size getter just uses os.path.getsize().
+        '''
+        return os.path.getsize(fl)
+    
     ### Internal loader methods
+    
+    def load_resource(self, full, fl_n, t):
+        '''
+        Used internally to delegate the loading of non-code resources. 
+        Sub-class additions should be made here.
+        '''
+        ty = self.guess_type(full)
+        if ty == T_IMAGE:
+            self.load_image(full, fl_n, t)
+        elif ty == T_SOUND:
+            self.load_sound(full, fl_n, t)
+        elif ty == T_MUSIC:
+            self.load_music(full, fl_n, t)
+        elif ty == T_PLAYLIST:
+            self.load_playlist(full, fl_n)
     
     def load_image(self, loc, title, group):
         '''
@@ -173,7 +236,8 @@ class Resources(object):
         load_objects().
         '''
         self.images.setdefault(group, {})
-        self.images[group][title] = pygame.image.load(loc).convert_alpha()
+        self.images[group][title] = pygame.image.load(self.load_file(loc)
+                ).convert_alpha()
     
     def load_music(self, loc, title, group):
         '''
@@ -188,7 +252,7 @@ class Resources(object):
         Used internally when loading playlists. You should probably use 
         load_objects().
         '''
-        lines = [l.strip() for l in open(loc).readlines()]
+        lines = [l.strip() for l in self.load_file(loc)]
         self.playlists.setdefault(title, [])
         self.playlists[title].append(Playlist(lines, True))
     
@@ -198,12 +262,14 @@ class Resources(object):
         load_objects().
         '''
         self.sounds.setdefault(group, {})
-        self.sounds[group][title] = Sound(loc, self)
+        self.sounds[group][title] = Sound(self.load_file(loc), self)
     
     def load_code(self, path, package, callwith):
         '''
         Used internally when loading code. You should probably use 
-        load_objects().
+        load_objects(). Also, as code objects are so different than other 
+        objects, this is the place to customize the getting, rather than 
+        load_file().
         '''
         sys.path = [path] + sys.path
         g_o = importlib.import_module(package).get_objects
@@ -211,6 +277,7 @@ class Resources(object):
         for obj in g_o(callwith):
             self.code[obj.title.lower()] = obj
     
+    ### External resource loading interface
     
     def load_objects(self, dirs=[], callwith={}):
         '''
@@ -218,28 +285,23 @@ class Resources(object):
         receive @callwith as an argument.
         '''
         for d in dirs:
-            contents = ls(d)
-            for t in contents:
+            for t in self.list_files(d):
                 first = join(d, t)
-                if t.startswith('.') or os.path.isfile(first):
+                if t.startswith('.') or self.is_file(first):
                     continue
                 t_l = t.lower()
-                for fl in ls(first):
+                for fl in self.list_files(first):
                     full = join(first, fl)
-                    if fl.startswith('.') or os.path.isdir(full):
+                    if fl.startswith('.') or not self.is_file(full):
                         continue
                     fl_n = fl.lower().rsplit('.', 1)[0]
-                    ty = guess_type(full)
-                    if ty == T_IMAGE:
-                        self.load_image(full, fl_n, t)
-                    elif ty == T_SOUND:
-                        self.load_sound(full, fl_n, t)
-                    elif ty == T_MUSIC:
-                        self.load_music(full, fl_n, t)
-                    elif ty == T_CODE and fl_n == '__init__':
-                        self.load_code(d, t, callwith)
-                    elif ty == T_PLAYLIST:
-                        self.load_playlist(full, fl_n)
+                    
+                    ty = self.guess_type(full)
+                    if ty == T_CODE:
+                        if fl_n == '__init__':
+                            self.load_code(d, t, callwith)
+                    else:
+                        self.load_resource(full, fl_n, t)
     
     
     def get_playlist(self):
@@ -264,10 +326,10 @@ class Resources(object):
     def play_song(self, stup):
         group, title = stup
         f = self.music[group][title]
-        pygame.mixer.music.load(f)
+        pygame.mixer.music.load(self.load_file(f))
         ext = get_ext(f)
         # Can take a start time from the music's metadata!
-        pygame.mixer.music.play(0, float(loaders[ext](f).get('gstart', [0])[0]))
+        pygame.mixer.music.play(0, float(self.get_meta(f, 'gstart', [0])[0]))
     
     ### Change volumes
     
