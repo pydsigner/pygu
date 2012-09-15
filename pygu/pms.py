@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import random
 
-__version__ = '1.2.1'
+__version__ = '1.2.2'
 
 class Playlist(object):
     '''
@@ -33,7 +33,7 @@ class Playlist(object):
     group1/music2.group5/music8
     group4/music1.group4/music2
     group7/music5
-    *2* group8/music2^group8/music3.group8/music4
+    *2*group8/music2^group8/music3.group8/music4
     
     The first line can be left blank, and is intended stand-alone playlists;
     It gives PMS players a list of folders in which to search for the group 
