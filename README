@@ -4,6 +4,28 @@ Pydsigner's Pygame Utilities
 A collection of handy modules for Pygame created by Daniel Foerster (a.k.a. 
 pydsigner)
 
+This package contains a light but powerful game engine, called Pyramid. The 
+core of the engine is contained in pyramid.py (no surprise there). This part 
+includes a resource management system, and a stateful manager and event loop.
+
+Additional tools include:
+* PMS (pms.py), a parser-manager for the Pyramid MetaSong playlist format, 
+which provides powerful music control, with random or non-random playback, 
+Weighted selection in random mode, and the featured meta-song, which allows 
+having an intro track to a unlimited grouping of music tracks.
+* PySLIM (pyslim.py), a universal interface to multiple music metadata 
+libraries. This tool is not complete, but already gives access to a few 
+different libraries.
+* PyGW (pygw.py), a GUI interface for Pygame, is the crowning jewel of this 
+library. Designed specifically for Pyramid, this library provides incredibly 
+usable yet infinitely customizable widgets. This is done by letting the user 
+skin the widgets: whether with a complex graphic, or simply a filled Surface. 
+The widgets include a container, which is like an invisible Tkinter frame, 
+allowing programmers to built mega-widgets; A simple button; a powerful text 
+entry supporting cut, copy, and paste; and a scrollable container. This is not 
+a complete list, and more are to come, including a scrollbar for use with the 
+afore-mentioned scrollable container.
+
 pydsigner@gmail.com
 http://github.com/pydsigner/pygu
 
@@ -19,6 +41,10 @@ $ cd examples
 And then:
 
 $ python test_widgets.py
+
+The only serious program that I know of that uses this library is my Chromium 
+BSU spinoff, Celestron. To see this library in a real situation, go to:
+https://sourceforge.net/projects/celestron/
 
 --------------------------------------------------------------------------------
 
@@ -40,5 +66,6 @@ instructions:
 --------------------------------------------------------------------------------
 
 If you use this library to do something useful, be sure to let me know! 
-Sometimes a short "Good work!" message is enough to make a programmer feel 
-rewarded.
+This library has changed in backwards-incompatible ways in the past, being 
+prepared to modify my works that use this library, but I understand that not 
+everyone has the time or wish to do so.
